@@ -1,23 +1,36 @@
 # Test Control Plane
 
-Spring Boot 3 backend for the internal BDD Test Catalog and execution console.
+Spring Boot 3 backend and Angular 19 console for the internal BDD Test Catalog and execution console.
 
-The frontend handoff is documented in [docs/frontend-design.md](docs/frontend-design.md). It includes the screen behavior and the `/api/v1` contract that this backend implements.
+The frontend design is documented in [docs/frontend-design.md](docs/frontend-design.md). It includes the screen behavior and the `/api/v1` contract that the backend implements.
 
 ## Requirements
 
 - Java 17+
 - Maven 3.6.3+
+- Node.js 20+ (frontend)
 
 The Maven build compiles with `--release 17`. Spring Boot is pinned to `3.5.16`.
 
-## Run
+## Run backend
 
 ```bash
 mvn spring-boot:run
 ```
 
 The API listens on `http://localhost:8080`.
+
+## Run frontend
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+The UI listens on `http://localhost:4200` and calls `http://localhost:8080/api/v1`.
+
+CORS allows `http://localhost:4200` (plus 3000/5173). Alternatively set `apiBaseUrl` to `/api/v1` and use the Angular dev-server proxy (`frontend/proxy.conf.json`).
 
 ## Verify
 

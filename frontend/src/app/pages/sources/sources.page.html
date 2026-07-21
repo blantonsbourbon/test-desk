@@ -1,0 +1,118 @@
+<div class="page">
+  <header class="page-header">
+    <div class="breadcrumbs"><span>Sources</span></div>
+    <div class="page-header__row">
+      <div>
+        <h1>Test sources</h1>
+        <p class="subtitle">
+          Git repositories that own the BDD definitions. The catalog is a read-only reflection.
+        </p>
+      </div>
+      <button type="button" class="btn btn--ghost" (click)="load()" [disabled]="loading">
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  @if (error) {
+    <div class="error-banner" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="btn btn--ghost btn--sm" (click)="load()">Retry</button>
+    </div>
+  }
+
+  @if (loading) {
+    <div class="panel empty">Loading sources…</div>
+  } @else if (!sources.length) {
+    <div class="panel empty">No test sources are configured.</div>
+  } @else {
+    <div class="cards">
+      @for (source of sources; track source.id) {
+        <button type="button" class="source-card panel" (click)="open(source)">
+          <div class="source-card__top">
+            <h2>{{ source.name }}</h2>
+            <app-status-badge [status]="source.syncStatus" />
+          </div>
+          <div class="mono muted truncate" [title]="source.repository">
+            {{ truncateRepo(source.repository) }}
+          </div>
+          <dl class="source-card__meta">
+            <div>
+              <dt>Branch</dt>
+              <dd class="mono">{{ source.defaultBranch }}</dd>
+            </div>
+            <div>
+              <dt>Commit</dt>
+              <dd class="mono">{{ shortSha(source.latestRevision?.commit) }}</dd>
+            </div>
+            <div>
+              <dt>Synced</dt>
+              <dd>{{ formatRelative(source.latestRevision?.syncedAt) }}</dd>
+            </div>
+            <div>
+              <dt>Catalog</dt>
+              <dd>{{ source.featureCount }} features · {{ source.scenarioCount }} scenarios</dd>
+            </div>
+          </dl>
+          @if (source.syncError) {
+            <div class="sync-error">{{ source.syncError }}</div>
+          }
+        </button>
+      }
+    </div>
+  }
+
+  @if (selected) {
+    <div class="overlay" (click)="close()" role="presentation"></div>
+    <aside class="drawer panel" role="dialog" aria-modal="true" aria-labelledby="source-title">
+      <header class="drawer__header">
+        <div>
+          <div class="muted small">Source detail</div>
+          <h2 id="source-title">{{ selected.name }}</h2>
+        </div>
+        <button type="button" class="icon-btn" aria-label="Close" (click)="close()">×</button>
+      </header>
+      <div class="drawer__body">
+        <dl class="detail-grid">
+          <div>
+            <dt>Repository</dt>
+            <dd class="mono">{{ selected.repository }}</dd>
+          </div>
+          <div>
+            <dt>Default branch</dt>
+            <dd class="mono">{{ selected.defaultBranch }}</dd>
+          </div>
+          <div>
+            <dt>Latest commit</dt>
+            <dd class="mono">{{ shortSha(selected.latestRevision?.commit) }}</dd>
+          </div>
+          <div>
+            <dt>Last synced</dt>
+            <dd>
+              {{ formatRelative(selected.latestRevision?.syncedAt) }}
+              <span class="muted small">({{ formatAbsolute(selected.latestRevision?.syncedAt) }})</span>
+            </dd>
+          </div>
+          <div>
+            <dt>Sync status</dt>
+            <dd><app-status-badge [status]="selected.syncStatus" /></dd>
+          </div>
+          <div>
+            <dt>Catalog size</dt>
+            <dd>{{ selected.featureCount }} features · {{ selected.scenarioCount }} scenarios</dd>
+          </div>
+        </dl>
+        @if (selected.syncError) {
+          <div class="error-banner">{{ selected.syncError }}</div>
+        }
+        <p class="muted small">
+          Source configuration is managed by platform operators. This console does not edit Git
+          connection settings.
+        </p>
+        <a class="btn btn--primary" [routerLink]="['/catalog']" [queryParams]="{ sourceId: selected.id }">
+          Open catalog
+        </a>
+      </div>
+    </aside>
+  }
+</div>

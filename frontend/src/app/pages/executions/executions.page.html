@@ -1,0 +1,105 @@
+<div class="page">
+  <header class="page-header">
+    <div class="breadcrumbs"><span>Executions</span></div>
+    <div class="page-header__row">
+      <div>
+        <h1>Executions</h1>
+        <p class="subtitle">History and in-flight runs pinned to catalog revisions.</p>
+      </div>
+      <button type="button" class="btn btn--ghost" (click)="load()" [disabled]="loading">
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <section class="toolbar panel">
+    <label class="field">
+      <span class="field__label">Status</span>
+      <select [(ngModel)]="status" (ngModelChange)="load()">
+        @for (s of statuses; track s) {
+          <option [value]="s">{{ s || 'All' }}</option>
+        }
+      </select>
+    </label>
+
+    <label class="field">
+      <span class="field__label">Environment</span>
+      <select [(ngModel)]="environment" (ngModelChange)="load()">
+        <option value="">All</option>
+        <option value="dev">dev</option>
+        <option value="qa">qa</option>
+      </select>
+    </label>
+
+    <label class="field">
+      <span class="field__label">Source</span>
+      <select [(ngModel)]="sourceId" (ngModelChange)="load()">
+        <option value="">All</option>
+        @for (source of sources; track source.id) {
+          <option [value]="source.id">{{ source.name }}</option>
+        }
+      </select>
+    </label>
+
+    @if (hasFilters) {
+      <button type="button" class="btn btn--ghost btn--sm" (click)="clearFilters()">
+        Clear filters
+      </button>
+    }
+  </section>
+
+  @if (error) {
+    <div class="error-banner" role="alert">
+      <span>{{ error }}</span>
+      <button type="button" class="btn btn--ghost btn--sm" (click)="load()">Retry</button>
+    </div>
+  }
+
+  @if (loading && !hasLoadedOnce) {
+    <div class="panel empty">Loading executions…</div>
+  } @else if (emptyBecauseNone) {
+    <div class="panel empty">
+      No executions yet. Open the
+      <a routerLink="/catalog">catalog</a>
+      and run a scenario.
+    </div>
+  } @else if (emptyBecauseFilters) {
+    <div class="panel empty">
+      No executions match the current filters.
+      <button type="button" class="btn btn--ghost btn--sm" (click)="clearFilters()">
+        Clear filters
+      </button>
+    </div>
+  } @else {
+    <div class="table panel" role="table" aria-label="Executions">
+      <div class="table__head" role="row">
+        <div role="columnheader">Execution</div>
+        <div role="columnheader">Scenarios</div>
+        <div role="columnheader">Env</div>
+        <div role="columnheader">Commit</div>
+        <div role="columnheader">Status</div>
+        <div role="columnheader">Requested by</div>
+        <div role="columnheader">Started</div>
+        <div role="columnheader">Duration</div>
+      </div>
+
+      @for (item of items; track item.id) {
+        <a
+          class="table__row"
+          role="row"
+          [routerLink]="['/executions', item.id]"
+          [class.table__row--active]="isActiveStatus(item.status)"
+        >
+          <div role="cell" class="mono">{{ item.id }}</div>
+          <div role="cell">{{ item.results.length }}</div>
+          <div role="cell" class="mono">{{ item.environment }}</div>
+          <div role="cell" class="mono">{{ shortSha(item.revision.commit) }}</div>
+          <div role="cell"><app-status-badge [status]="item.status" /></div>
+          <div role="cell">{{ item.requestedBy }}</div>
+          <div role="cell">{{ formatRelative(item.startedAt || item.requestedAt) }}</div>
+          <div role="cell" class="mono">{{ formatDuration(item.durationMs) }}</div>
+        </a>
+      }
+    </div>
+  }
+</div>
