@@ -8,6 +8,7 @@ import com.acme.testcontrolplane.domain.TestSource;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
+import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -56,15 +57,28 @@ public class ExecutionService {
                 selected
         );
         executions.put(execution.id(), execution);
-        executionRunner.submit(execution, this::recordTerminalResult);
+        try {
+            executionRunner.submit(execution, this::recordTerminalResult);
+        } catch (RuntimeException exception) {
+            execution.markRunnerError("Execution runner unavailable");
+            catalogService.recordExecution(execution);
+        }
         return execution;
     }
 
-    public List<TestExecution> list(String sourceId, ExecutionStatus status, Environment environment) {
+    public List<TestExecution> list(
+            String sourceId,
+            ExecutionStatus status,
+            Environment environment,
+            Instant from,
+            Instant to
+    ) {
         return executions.values().stream()
                 .filter(execution -> sourceId == null || sourceId.isBlank() || execution.sourceId().equals(sourceId))
                 .filter(execution -> status == null || execution.status() == status)
                 .filter(execution -> environment == null || execution.environment() == environment)
+                .filter(execution -> from == null || !execution.requestedAt().isBefore(from))
+                .filter(execution -> to == null || !execution.requestedAt().isAfter(to))
                 .sorted(Comparator.comparing(TestExecution::requestedAt).reversed())
                 .toList();
     }

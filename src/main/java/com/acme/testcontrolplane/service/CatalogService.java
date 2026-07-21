@@ -4,6 +4,7 @@ import com.acme.testcontrolplane.api.ApiModels;
 import com.acme.testcontrolplane.domain.CatalogRevision;
 import com.acme.testcontrolplane.domain.FeatureDefinition;
 import com.acme.testcontrolplane.domain.ScenarioDefinition;
+import com.acme.testcontrolplane.domain.ScenarioExecutionResult;
 import com.acme.testcontrolplane.domain.ScenarioExecutionStatus;
 import com.acme.testcontrolplane.domain.ScenarioKind;
 import com.acme.testcontrolplane.domain.ScenarioStep;
@@ -13,15 +14,12 @@ import com.acme.testcontrolplane.domain.TestSource;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ScheduledExecutorService;
@@ -72,27 +70,35 @@ public class CatalogService {
                 .filter(feature -> !feature.scenarios().isEmpty())
                 .toList();
 
-        long passedCount = matchingFeatures.stream()
-                .flatMap(feature -> feature.scenarios().stream())
-                .map(this::latestStatus)
-                .filter(statusValue -> statusValue == ScenarioExecutionStatus.PASSED)
-                .count();
-        long failedCount = matchingFeatures.stream()
-                .flatMap(feature -> feature.scenarios().stream())
-                .map(this::latestStatus)
-                .filter(statusValue -> statusValue == ScenarioExecutionStatus.FAILED)
-                .count();
-
         return new CatalogSnapshot(
                 source,
                 matchingFeatures,
-                new ApiModels.CatalogStats(
-                        matchingFeatures.size(),
-                        matchingFeatures.stream().mapToInt(feature -> feature.scenarios().size()).sum(),
-                        passedCount,
-                        failedCount
-                )
+                sourceStats(sourceId)
         );
+    }
+
+    private ApiModels.CatalogStats sourceStats(String sourceId) {
+        Instant cutoff = Instant.now().minus(java.time.Duration.ofHours(24));
+        List<FeatureDefinition> sourceFeatures = getFeaturesForSource(sourceId);
+        List<ScenarioDefinition> sourceScenarios = sourceFeatures.stream()
+                .flatMap(feature -> feature.scenarios().stream())
+                .toList();
+        long passedCount = sourceScenarios.stream()
+                .map(latestResults::get)
+                .filter(latest -> latest != null && latest.completedAt().isAfter(cutoff))
+                .map(LatestScenarioResult::status)
+                .filter(statusValue -> statusValue == ScenarioExecutionStatus.PASSED)
+                .count();
+        long failedCount = sourceScenarios.stream()
+                .map(latestResults::get)
+                .filter(latest -> latest != null && latest.completedAt().isAfter(cutoff))
+                .map(LatestScenarioResult::status)
+                .filter(statusValue -> statusValue == ScenarioExecutionStatus.FAILED)
+                .count();
+        long completedCount = passedCount + failedCount;
+        Double passRate = completedCount == 0 ? null : passedCount * 100.0 / completedCount;
+        return new ApiModels.CatalogStats(
+                sourceFeatures.size(), sourceScenarios.size(), passedCount, failedCount, passRate);
     }
 
     public ScenarioDefinition getScenario(String scenarioId) {
@@ -106,6 +112,9 @@ public class CatalogService {
     public List<ScenarioDefinition> getScenarios(Collection<String> scenarioIds) {
         if (scenarioIds == null || scenarioIds.isEmpty()) {
             throw new InvalidExecutionException("At least one scenario is required");
+        }
+        if (scenarioIds.stream().anyMatch(id -> id == null || id.isBlank())) {
+            throw new InvalidExecutionException("scenarioIds cannot contain blank values");
         }
         List<ScenarioDefinition> selected = scenarioIds.stream()
                 .distinct()
@@ -157,16 +166,48 @@ public class CatalogService {
 
     public void recordExecution(TestExecution execution) {
         Instant completedAt = execution.completedAt() == null ? Instant.now() : execution.completedAt();
-        execution.results().forEach(result -> latestResults.put(
-                result.scenarioId(),
-                new LatestScenarioResult(result.status(), result.durationMs(), completedAt)
-        ));
+        execution.results().stream()
+                .collect(Collectors.groupingBy(ScenarioExecutionResult::scenarioId))
+                .forEach((scenarioId, results) -> latestResults.put(
+                        scenarioId,
+                        new LatestScenarioResult(
+                                aggregateScenarioStatus(results),
+                                results.stream().mapToLong(result -> result.durationMs()).sum(),
+                                completedAt
+                        )
+                ));
+    }
+
+    private ScenarioExecutionStatus aggregateScenarioStatus(
+            List<ScenarioExecutionResult> results
+    ) {
+        if (results.stream().anyMatch(result -> result.status() == ScenarioExecutionStatus.ERROR)) {
+            return ScenarioExecutionStatus.ERROR;
+        }
+        if (results.stream().anyMatch(result -> result.status() == ScenarioExecutionStatus.FAILED)) {
+            return ScenarioExecutionStatus.FAILED;
+        }
+        if (results.stream().anyMatch(result -> result.status() == ScenarioExecutionStatus.CANCELLED)) {
+            return ScenarioExecutionStatus.CANCELLED;
+        }
+        if (results.stream().anyMatch(result -> result.status() == ScenarioExecutionStatus.SKIPPED)) {
+            return ScenarioExecutionStatus.SKIPPED;
+        }
+        return ScenarioExecutionStatus.PASSED;
     }
 
     public void requestSync(String sourceId) {
         TestSource source = getSource(sourceId);
-        source.markSyncing();
-        scheduler.schedule(() -> source.markSynced(nextCommit(source.latestRevision().commit())), 350, TimeUnit.MILLISECONDS);
+        if (!source.tryMarkSyncing()) {
+            return;
+        }
+        CatalogRevision currentRevision = source.latestRevision();
+        if (currentRevision == null) {
+            source.markSyncError("No Catalog Revision is available to synchronize");
+            return;
+        }
+        String nextCommit = nextCommit(currentRevision.commit());
+        scheduler.schedule(() -> source.markSynced(nextCommit), 350, TimeUnit.MILLISECONDS);
     }
 
     private FeatureDefinition filterFeature(
@@ -231,7 +272,8 @@ public class CatalogService {
                         scenario("checkout-expired-card", "checkout-payments", "Customer sees a message for an expired card", ScenarioKind.SCENARIO, List.of("payments", "regression"), 33,
                                 List.of(step("Given", "a customer is on the payment step"), step("When", "they submit an expired card"), step("Then", "a useful decline message is shown"))),
                         scenario("checkout-wallet", "checkout-payments", "Customer pays with a saved wallet", ScenarioKind.SCENARIO_OUTLINE, List.of("payments"), 47,
-                                List.of(step("Given", "a customer has a saved wallet"), step("When", "they choose <wallet>"), step("Then", "the payment is accepted")))
+                                List.of(step("Given", "a customer has a saved wallet"), step("When", "they choose <wallet>"), step("Then", "the payment is accepted")),
+                                List.of(Map.of("wallet", "Apple Pay"), Map.of("wallet", "Google Pay")))
                 )
         ));
         addFeature(new FeatureDefinition(
@@ -290,6 +332,19 @@ public class CatalogService {
             List<ScenarioStep> steps
     ) {
         return new ScenarioDefinition(id, featureId, name, kind, tags, featurePath(featureId), line, steps);
+    }
+
+    private ScenarioDefinition scenario(
+            String id,
+            String featureId,
+            String name,
+            ScenarioKind kind,
+            List<String> tags,
+            int line,
+            List<ScenarioStep> steps,
+            List<Map<String, String>> examples
+    ) {
+        return new ScenarioDefinition(id, featureId, name, kind, tags, featurePath(featureId), line, steps, examples);
     }
 
     private String featurePath(String featureId) {

@@ -55,9 +55,13 @@ public final class TestSource {
         return syncError;
     }
 
-    public synchronized void markSyncing() {
+    public synchronized boolean tryMarkSyncing() {
+        if (syncStatus == SourceSyncStatus.SYNCING) {
+            return false;
+        }
         syncStatus = SourceSyncStatus.SYNCING;
         syncError = null;
+        return true;
     }
 
     public synchronized void markSynced(String commit) {

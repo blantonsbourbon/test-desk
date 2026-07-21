@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Instant;
+
 @RestController
 @RequestMapping("/api/v1/executions")
 public class ExecutionController {
@@ -37,10 +39,14 @@ public class ExecutionController {
     public ApiModels.ExecutionListResponse list(
             @RequestParam(required = false) String sourceId,
             @RequestParam(required = false) ExecutionStatus status,
-            @RequestParam(required = false) Environment environment
+            @RequestParam(required = false) Environment environment,
+            @RequestParam(required = false) Instant from,
+            @RequestParam(required = false) Instant to
     ) {
         return new ApiModels.ExecutionListResponse(
-                executionService.list(sourceId, status, environment).stream().map(mapper::toExecution).toList());
+                executionService.list(sourceId, status, environment, from, to).stream()
+                        .map(mapper::toExecution)
+                        .toList());
     }
 
     @GetMapping("/{executionId}")

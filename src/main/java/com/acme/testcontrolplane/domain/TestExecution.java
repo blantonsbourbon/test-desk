@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class TestExecution {
     private final String id;
@@ -15,7 +14,7 @@ public final class TestExecution {
     private final Environment environment;
     private final String requestedBy;
     private final Instant requestedAt;
-    private final List<ScenarioExecutionResult> results;
+    private volatile List<ScenarioExecutionResult> results;
     private volatile ExecutionStatus status;
     private volatile Instant startedAt;
     private volatile Instant completedAt;
@@ -36,15 +35,27 @@ public final class TestExecution {
         this.requestedBy = Objects.requireNonNull(requestedBy);
         this.requestedAt = Instant.now();
         this.status = ExecutionStatus.QUEUED;
-        this.results = new CopyOnWriteArrayList<>(scenarios.stream()
-                .map(scenario -> new ScenarioExecutionResult(
+        List<ScenarioExecutionResult> initialResults = new ArrayList<>();
+        scenarios.forEach(scenario -> {
+            if (scenario.examples().isEmpty()) {
+                initialResults.add(new ScenarioExecutionResult(
+                        scenario.id(), scenario.id(), scenario.name(),
+                        ScenarioExecutionStatus.QUEUED, 0, null));
+                return;
+            }
+            for (int index = 0; index < scenario.examples().size(); index++) {
+                initialResults.add(new ScenarioExecutionResult(
+                        scenario.id() + "#example-" + (index + 1),
                         scenario.id(),
                         scenario.name(),
+                        scenario.examples().get(index),
                         ScenarioExecutionStatus.QUEUED,
                         0,
                         null
-                ))
-                .toList());
+                ));
+            }
+        });
+        this.results = List.copyOf(initialResults);
     }
 
     public String id() {
@@ -108,21 +119,29 @@ public final class TestExecution {
         List<ScenarioExecutionResult> updated = new ArrayList<>();
         boolean hasError = false;
         boolean hasFailure = false;
+        boolean hasCancellation = false;
+        boolean hasSkipped = false;
         for (ScenarioExecutionResult result : results) {
-            ScenarioResultUpdate update = updates.get(result.scenarioId());
+            ScenarioResultUpdate update = updates.get(result.resultId());
             ScenarioExecutionStatus scenarioStatus = update == null
                     ? ScenarioExecutionStatus.ERROR
                     : update.status();
             long durationMs = update == null ? 0 : update.durationMs();
             String message = update == null ? "Runner returned no result for this scenario" : update.errorMessage();
             updated.add(new ScenarioExecutionResult(
-                    result.scenarioId(), result.scenarioName(), scenarioStatus, durationMs, message));
+                    result.resultId(), result.scenarioId(), result.scenarioName(), result.exampleValues(),
+                    scenarioStatus, durationMs, message));
             hasError |= scenarioStatus == ScenarioExecutionStatus.ERROR;
             hasFailure |= scenarioStatus == ScenarioExecutionStatus.FAILED;
+            hasCancellation |= scenarioStatus == ScenarioExecutionStatus.CANCELLED;
+            hasSkipped |= scenarioStatus == ScenarioExecutionStatus.SKIPPED;
         }
-        results.clear();
-        results.addAll(updated);
-        status = hasError ? ExecutionStatus.ERROR : hasFailure ? ExecutionStatus.FAILED : ExecutionStatus.PASSED;
+        results = List.copyOf(updated);
+        status = hasError ? ExecutionStatus.ERROR
+                : hasFailure ? ExecutionStatus.FAILED
+                : hasCancellation ? ExecutionStatus.CANCELLED
+                : hasSkipped ? ExecutionStatus.FAILED
+                : ExecutionStatus.PASSED;
         completedAt = Instant.now();
     }
 
@@ -155,10 +174,10 @@ public final class TestExecution {
     private void replaceResults(ScenarioExecutionStatus scenarioStatus, long durationMs, String message) {
         List<ScenarioExecutionResult> updated = results.stream()
                 .map(result -> new ScenarioExecutionResult(
-                        result.scenarioId(), result.scenarioName(), scenarioStatus, durationMs, message))
+                        result.resultId(), result.scenarioId(), result.scenarioName(), result.exampleValues(),
+                        scenarioStatus, durationMs, message))
                 .toList();
-        results.clear();
-        results.addAll(updated);
+        results = List.copyOf(updated);
     }
 
     public record ScenarioResultUpdate(

@@ -94,7 +94,7 @@
 
 - 标题显示状态和执行 ID。
 - 摘要卡：Environment、Catalog Revision、source、Scenario 数量、发起人、开始/结束时间、耗时。
-- Scenario 结果表：每条 Scenario 的 Passed / Failed / Error / Cancelled / Skipped、耗时和错误摘要。
+- Scenario 结果表：每条 Scenario 的 Passed / Failed / Error / Cancelled / Skipped、耗时和错误摘要；Scenario Outline 的每个 `exampleValues` 单独一行。
 - 运行中的执行显示实时刷新提示；首版可以轮询，间隔由实现模型决定。
 - Queued / Running 显示 `Cancel`，终态不显示取消按钮。
 - 基础设施 Error 要说明“没有得到可靠的测试结果”，并提供错误摘要；不能伪装成 Scenario Failed。
@@ -143,13 +143,13 @@
 
 `GET /catalog?sourceId=checkout-web&q=login&status=FAILED&tag=smoke`
 
-返回 `revision` 和按 Feature 分组的 `features`。每个 Scenario 至少包含 `id`、`name`、`kind`、`tags`、`status`、`durationMs`、`lastRunAt`。
+返回 `revision` 和按 Feature 分组的 `features`。每个 Scenario 至少包含 `id`、`name`、`kind`、`tags`、`exampleCount`、`status`、`durationMs`、`lastRunAt`。`stats` 是 source-level 摘要，包含 `passRate`；目录筛选不会改变统计卡片的口径，当前 `passRate` 以最近 24 小时已完成的 Scenario 结果计算。
 
 ### 获取 Scenario 详情
 
 `GET /catalog/scenarios/{scenarioId}`
 
-返回步骤、源文件路径、行号、最近执行摘要和最近执行列表。
+返回步骤、源文件路径、行号、Examples、最近执行摘要和最近执行列表。
 
 ### 创建执行
 
@@ -169,7 +169,7 @@
 
 ### 查询执行
 
-- `GET /executions?sourceId=&status=&environment=`
+- `GET /executions?sourceId=&status=&environment=&from=&to=`（`from`、`to` 为 ISO-8601 UTC 时间，可选）
 - `GET /executions/{executionId}`
 - `POST /executions/{executionId}/cancel`
 

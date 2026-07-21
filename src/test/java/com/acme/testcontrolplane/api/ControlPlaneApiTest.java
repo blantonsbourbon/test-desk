@@ -52,6 +52,22 @@ class ControlPlaneApiTest {
     }
 
     @Test
+    void exposesScenarioOutlineExamplesAndExpandsExecutionResults() throws Exception {
+        mockMvc.perform(get("/api/v1/catalog/scenarios/{scenarioId}", "checkout-wallet"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.examples", hasSize(2)))
+                .andExpect(jsonPath("$.examples[0].wallet", is("Apple Pay")))
+                .andExpect(jsonPath("$.examples[1].wallet", is("Google Pay")));
+
+        mockMvc.perform(post("/api/v1/executions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sourceId\":\"checkout-web\",\"scenarioIds\":[\"checkout-wallet\"],\"environment\":\"qa\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.results", hasSize(2)))
+                .andExpect(jsonPath("$.results[0].exampleValues.wallet", is("Apple Pay")));
+    }
+
+    @Test
     void rejectsExecutionWithoutEnvironment() throws Exception {
         mockMvc.perform(post("/api/v1/executions")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -59,6 +75,15 @@ class ControlPlaneApiTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code", is("BAD_REQUEST")))
                 .andExpect(jsonPath("$.message", is("environment environment is required")));
+    }
+
+    @Test
+    void rejectsBlankScenarioIdsAsBadRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/executions")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sourceId\":\"checkout-web\",\"scenarioIds\":[null],\"environment\":\"qa\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code", is("BAD_REQUEST")));
     }
 
     @Test

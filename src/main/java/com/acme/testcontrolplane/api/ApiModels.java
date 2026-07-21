@@ -12,6 +12,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 public final class ApiModels {
     private ApiModels() {
@@ -46,8 +47,9 @@ public final class ApiModels {
             List<String> tags,
             String sourcePath,
             int line,
-            ScenarioExecutionStatus latestStatus,
-            Long lastDurationMs,
+            int exampleCount,
+            ScenarioExecutionStatus status,
+            Long durationMs,
             Instant lastRunAt
     ) {
     }
@@ -62,7 +64,13 @@ public final class ApiModels {
     ) {
     }
 
-    public record CatalogStats(int featureCount, int scenarioCount, long passedCount, long failedCount) {
+    public record CatalogStats(
+            int featureCount,
+            int scenarioCount,
+            long passedCount,
+            long failedCount,
+            Double passRate
+    ) {
     }
 
     public record CatalogResponse(
@@ -86,8 +94,9 @@ public final class ApiModels {
             String sourcePath,
             int line,
             List<ScenarioStepResponse> steps,
-            ScenarioExecutionStatus latestStatus,
-            Long lastDurationMs,
+            List<Map<String, String>> examples,
+            ScenarioExecutionStatus status,
+            Long durationMs,
             Instant lastRunAt,
             List<ExecutionSummaryResponse> recentExecutions
     ) {
@@ -99,14 +108,17 @@ public final class ApiModels {
             ExecutionStatus status,
             RevisionResponse revision,
             Instant requestedAt,
+            Instant startedAt,
             Instant completedAt,
             long durationMs
     ) {
     }
 
     public record ScenarioExecutionResultResponse(
+            String resultId,
             String scenarioId,
             String scenarioName,
+            Map<String, String> exampleValues,
             ScenarioExecutionStatus status,
             long durationMs,
             String errorMessage

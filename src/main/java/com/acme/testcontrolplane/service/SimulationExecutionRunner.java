@@ -38,7 +38,7 @@ public class SimulationExecutionRunner implements ExecutionRunner {
             Map<String, TestExecution.ScenarioResultUpdate> updates = new HashMap<>();
             execution.results().forEach(result -> {
                 boolean deterministicFailure = result.scenarioId().contains("expired");
-                updates.put(result.scenarioId(), new TestExecution.ScenarioResultUpdate(
+                updates.put(result.resultId(), new TestExecution.ScenarioResultUpdate(
                         deterministicFailure ? ScenarioExecutionStatus.FAILED : ScenarioExecutionStatus.PASSED,
                         deterministicFailure ? 820 : 1320,
                         deterministicFailure ? "Expected payment rejection message was not visible" : null

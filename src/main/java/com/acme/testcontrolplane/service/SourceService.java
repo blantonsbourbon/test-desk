@@ -25,13 +25,4 @@ public class SourceService {
         catalogService.requestSync(sourceId);
     }
 
-    public int featureCount(String sourceId) {
-        return catalogService.getFeaturesForSource(sourceId).size();
-    }
-
-    public int scenarioCount(String sourceId) {
-        return catalogService.getFeaturesForSource(sourceId).stream()
-                .mapToInt(feature -> feature.scenarios().size())
-                .sum();
-    }
 }

@@ -73,6 +73,7 @@ public class ApiMapper {
                 scenario.tags(),
                 scenario.sourcePath(),
                 scenario.line(),
+                scenario.examples().size(),
                 status.status(),
                 status.durationMs(),
                 status.lastRunAt()
@@ -92,6 +93,7 @@ public class ApiMapper {
                 scenario.sourcePath(),
                 scenario.line(),
                 scenario.steps().stream().map(step -> new ScenarioStepResponse(step.keyword(), step.text())).toList(),
+                scenario.examples(),
                 status.status(),
                 status.durationMs(),
                 status.lastRunAt(),
@@ -114,8 +116,10 @@ public class ApiMapper {
                 execution.errorMessage(),
                 execution.results().stream()
                         .map(result -> new ScenarioExecutionResultResponse(
+                                result.resultId(),
                                 result.scenarioId(),
                                 result.scenarioName(),
+                                result.exampleValues(),
                                 result.status(),
                                 result.durationMs(),
                                 result.errorMessage()
@@ -131,6 +135,7 @@ public class ApiMapper {
                 execution.status(),
                 ApiModels.RevisionResponse.from(execution.revision()),
                 execution.requestedAt(),
+                execution.startedAt(),
                 execution.completedAt(),
                 execution.durationMs()
         );
