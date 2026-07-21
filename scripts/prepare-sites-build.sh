@@ -7,10 +7,10 @@ angular_cli="$project_dir/frontend/node_modules/@angular/cli/bin/ng.js"
 
 "$node_bin" "$angular_cli" build --configuration production --project frontend
 rm -rf "$project_dir/dist"
-mkdir -p "$project_dir/dist/server"
-cp -R "$project_dir/frontend/dist/frontend/browser"/. "$project_dir/dist"/
+mkdir -p "$project_dir/dist/client" "$project_dir/dist/server"
+cp -R "$project_dir/frontend/dist/frontend/browser"/. "$project_dir/dist/client"/
 if test -f "$project_dir/frontend/dist/frontend/3rdpartylicenses.txt"; then
-  cp "$project_dir/frontend/dist/frontend/3rdpartylicenses.txt" "$project_dir/dist/"
+  cp "$project_dir/frontend/dist/frontend/3rdpartylicenses.txt" "$project_dir/dist/client/"
 fi
 cp "$project_dir/scripts/sites-worker.js" "$project_dir/dist/server/index.js"
 
