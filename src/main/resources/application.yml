@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: test-control-plane
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+test-control-plane:
+  cors:
+    allowed-origins: "http://localhost:3000,http://localhost:5173"
