@@ -7,11 +7,9 @@ import com.acme.testcontrolplane.domain.TestExecution;
 import com.acme.testcontrolplane.domain.TestSource;
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -100,7 +98,7 @@ public class ExecutionService {
     }
 
     public List<TestExecution> recentForScenario(String scenarioId, int limit) {
-        int safeLimit = Math.max(1, Math.min(limit, 50));
+        int safeLimit = Math.max(1, Math.min(limit, 5));
         return executions.values().stream()
                 .filter(execution -> execution.results().stream()
                         .anyMatch(result -> result.scenarioId().equals(scenarioId)))

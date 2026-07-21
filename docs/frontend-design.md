@@ -143,7 +143,7 @@
 
 `GET /catalog?sourceId=checkout-web&q=login&status=FAILED&tag=smoke`
 
-返回 `revision` 和按 Feature 分组的 `features`。每个 Scenario 至少包含 `id`、`name`、`kind`、`tags`、`exampleCount`、`status`、`durationMs`、`lastRunAt`。`stats` 是 source-level 摘要，包含 `passRate`；目录筛选不会改变统计卡片的口径，当前 `passRate` 以最近 24 小时已完成的 Scenario 结果计算。
+返回 `revision` 和按 Feature 分组的 `features`。每个 Scenario 至少包含 `id`、`name`、`kind`、`tags`、`exampleCount`、`status`、`durationMs`、`lastRunAt`；尚未执行时 `status` 为 `NEVER_RUN`。`stats` 是 source-level 摘要，包含 `passRate`；目录筛选不会改变统计卡片的口径，当前 `passRate` 以最近 24 小时每个 Scenario 的最新可靠结果（`PASSED` / `FAILED`）计算，基础设施 `ERROR` 和用户取消不计入分母。
 
 ### 获取 Scenario 详情
 

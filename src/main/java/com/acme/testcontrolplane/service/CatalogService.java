@@ -14,6 +14,7 @@ import com.acme.testcontrolplane.domain.TestSource;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -22,6 +23,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -84,13 +86,13 @@ public class CatalogService {
                 .flatMap(feature -> feature.scenarios().stream())
                 .toList();
         long passedCount = sourceScenarios.stream()
-                .map(latestResults::get)
+                .map(scenario -> latestResults.get(scenarioKey(sourceId, scenario.id())))
                 .filter(latest -> latest != null && latest.completedAt().isAfter(cutoff))
                 .map(LatestScenarioResult::status)
                 .filter(statusValue -> statusValue == ScenarioExecutionStatus.PASSED)
                 .count();
         long failedCount = sourceScenarios.stream()
-                .map(latestResults::get)
+                .map(scenario -> latestResults.get(scenarioKey(sourceId, scenario.id())))
                 .filter(latest -> latest != null && latest.completedAt().isAfter(cutoff))
                 .map(LatestScenarioResult::status)
                 .filter(statusValue -> statusValue == ScenarioExecutionStatus.FAILED)
@@ -149,7 +151,9 @@ public class CatalogService {
     }
 
     public ScenarioStatus latestScenarioStatus(String scenarioId) {
-        LatestScenarioResult latest = latestResults.get(scenarioId);
+        ScenarioDefinition scenario = getScenario(scenarioId);
+        String sourceId = getFeature(scenario.featureId()).sourceId();
+        LatestScenarioResult latest = latestResults.get(scenarioKey(sourceId, scenarioId));
         return latest == null
                 ? new ScenarioStatus(null, null, null)
                 : new ScenarioStatus(latest.status(), latest.durationMs(), latest.completedAt());
@@ -168,14 +172,17 @@ public class CatalogService {
         Instant completedAt = execution.completedAt() == null ? Instant.now() : execution.completedAt();
         execution.results().stream()
                 .collect(Collectors.groupingBy(ScenarioExecutionResult::scenarioId))
-                .forEach((scenarioId, results) -> latestResults.put(
-                        scenarioId,
+                .forEach((scenarioId, results) -> {
+                    String sourceId = getFeature(getScenario(scenarioId).featureId()).sourceId();
+                    latestResults.put(
+                        scenarioKey(sourceId, scenarioId),
                         new LatestScenarioResult(
                                 aggregateScenarioStatus(results),
                                 results.stream().mapToLong(result -> result.durationMs()).sum(),
                                 completedAt
                         )
-                ));
+                    );
+                });
     }
 
     private ScenarioExecutionStatus aggregateScenarioStatus(
@@ -207,7 +214,11 @@ public class CatalogService {
             return;
         }
         String nextCommit = nextCommit(currentRevision.commit());
-        scheduler.schedule(() -> source.markSynced(nextCommit), 350, TimeUnit.MILLISECONDS);
+        try {
+            scheduler.schedule(() -> source.markSynced(nextCommit), 350, TimeUnit.MILLISECONDS);
+        } catch (RejectedExecutionException exception) {
+            source.markSyncError("Sync scheduler is unavailable");
+        }
     }
 
     private FeatureDefinition filterFeature(
@@ -219,8 +230,7 @@ public class CatalogService {
         List<ScenarioDefinition> matchingScenarios = feature.scenarios().stream()
                 .filter(scenario -> matchesQuery(feature, scenario, query))
                 .filter(scenario -> matchesStatus(scenario, status))
-                .filter(scenario -> tags.isEmpty() || tags.stream().allMatch(tag -> scenario.tags().stream()
-                        .map(value -> value.toLowerCase(Locale.ROOT)).toList().contains(tag)))
+                .filter(scenario -> matchesTags(feature, scenario, tags))
                 .toList();
         return new FeatureDefinition(
                 feature.id(), feature.sourceId(), feature.name(), feature.tags(), feature.sourcePath(), matchingScenarios);
@@ -230,9 +240,22 @@ public class CatalogService {
         if (query.isBlank()) {
             return true;
         }
-        return String.join(" ", feature.name(), scenario.name(), scenario.sourcePath(), String.join(" ", scenario.tags()))
+        return String.join(" ", feature.name(), scenario.name(), scenario.sourcePath(),
+                        String.join(" ", feature.tags()), String.join(" ", scenario.tags()))
                 .toLowerCase(Locale.ROOT)
                 .contains(query);
+    }
+
+    private boolean matchesTags(FeatureDefinition feature, ScenarioDefinition scenario, List<String> tags) {
+        if (tags.isEmpty()) {
+            return true;
+        }
+        List<String> availableTags = new ArrayList<>(feature.tags());
+        availableTags.addAll(scenario.tags());
+        List<String> normalizedAvailableTags = availableTags.stream()
+                .map(value -> value.toLowerCase(Locale.ROOT))
+                .toList();
+        return tags.stream().allMatch(normalizedAvailableTags::contains);
     }
 
     private boolean matchesStatus(ScenarioDefinition scenario, String status) {
@@ -244,8 +267,13 @@ public class CatalogService {
     }
 
     private ScenarioExecutionStatus latestStatus(ScenarioDefinition scenario) {
-        LatestScenarioResult latest = latestResults.get(scenario.id());
+        String sourceId = getFeature(scenario.featureId()).sourceId();
+        LatestScenarioResult latest = latestResults.get(scenarioKey(sourceId, scenario.id()));
         return latest == null ? null : latest.status();
+    }
+
+    private String scenarioKey(String sourceId, String scenarioId) {
+        return sourceId + ":" + scenarioId;
     }
 
     private void seedCatalog() {

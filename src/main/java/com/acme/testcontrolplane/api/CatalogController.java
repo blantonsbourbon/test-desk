@@ -40,7 +40,7 @@ public class CatalogController {
     ) {
         return mapper.toScenarioDetails(
                 catalogService.getScenario(scenarioId),
-                executionService.recentForScenario(scenarioId, limit)
+                executionService.recentForScenario(scenarioId, Math.min(limit, 5))
         );
     }
 }

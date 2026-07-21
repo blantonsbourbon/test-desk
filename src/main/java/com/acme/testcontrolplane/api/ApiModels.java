@@ -48,7 +48,7 @@ public final class ApiModels {
             String sourcePath,
             int line,
             int exampleCount,
-            ScenarioExecutionStatus status,
+            String status,
             Long durationMs,
             Instant lastRunAt
     ) {
@@ -95,7 +95,7 @@ public final class ApiModels {
             int line,
             List<ScenarioStepResponse> steps,
             List<Map<String, String>> examples,
-            ScenarioExecutionStatus status,
+            String status,
             Long durationMs,
             Instant lastRunAt,
             List<ExecutionSummaryResponse> recentExecutions

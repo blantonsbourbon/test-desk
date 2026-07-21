@@ -29,6 +29,7 @@ public class ApiMapper {
 
     public SourceResponse toSource(TestSource source) {
         String sourceId = source.id();
+        List<FeatureDefinition> sourceFeatures = catalogService.getFeaturesForSource(sourceId);
         return new SourceResponse(
                 source.id(),
                 source.name(),
@@ -37,8 +38,8 @@ public class ApiMapper {
                 source.latestRevision() == null ? null : ApiModels.RevisionResponse.from(source.latestRevision()),
                 source.syncStatus(),
                 source.syncError(),
-                catalogService.getFeaturesForSource(sourceId).size(),
-                catalogService.getFeaturesForSource(sourceId).stream()
+                sourceFeatures.size(),
+                sourceFeatures.stream()
                         .mapToInt(feature -> feature.scenarios().size())
                         .sum()
         );
@@ -47,7 +48,9 @@ public class ApiMapper {
     public CatalogResponse toCatalog(CatalogService.CatalogSnapshot snapshot) {
         return new CatalogResponse(
                 toSource(snapshot.source()),
-                ApiModels.RevisionResponse.from(snapshot.source().latestRevision()),
+                snapshot.source().latestRevision() == null
+                        ? null
+                        : ApiModels.RevisionResponse.from(snapshot.source().latestRevision()),
                 snapshot.features().stream().map(this::toFeature).toList(),
                 snapshot.stats()
         );
@@ -74,7 +77,7 @@ public class ApiMapper {
                 scenario.sourcePath(),
                 scenario.line(),
                 scenario.examples().size(),
-                status.status(),
+                catalogStatus(status.status()),
                 status.durationMs(),
                 status.lastRunAt()
         );
@@ -94,7 +97,7 @@ public class ApiMapper {
                 scenario.line(),
                 scenario.steps().stream().map(step -> new ScenarioStepResponse(step.keyword(), step.text())).toList(),
                 scenario.examples(),
-                status.status(),
+                catalogStatus(status.status()),
                 status.durationMs(),
                 status.lastRunAt(),
                 recentExecutions.stream().map(this::toExecutionSummary).toList()
@@ -139,5 +142,9 @@ public class ApiMapper {
                 execution.completedAt(),
                 execution.durationMs()
         );
+    }
+
+    private String catalogStatus(com.acme.testcontrolplane.domain.ScenarioExecutionStatus status) {
+        return status == null ? "NEVER_RUN" : status.name();
     }
 }

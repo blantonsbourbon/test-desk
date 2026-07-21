@@ -49,6 +49,19 @@ class ControlPlaneApiTest {
                 .andExpect(jsonPath("$.features[0].scenarios", hasSize(1)))
                 .andExpect(jsonPath("$.features[0].scenarios[0].id", is("checkout-expired-card")))
                 .andExpect(jsonPath("$.features[0].scenarios[0].kind", is("SCENARIO")));
+
+        mockMvc.perform(get("/api/v1/catalog")
+                        .param("sourceId", "checkout-web")
+                        .param("tag", "critical"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.features[0].id", is("checkout-payments")))
+                .andExpect(jsonPath("$.features[0].scenarios", hasSize(3)));
+
+        mockMvc.perform(get("/api/v1/catalog")
+                        .param("sourceId", "checkout-web")
+                        .param("q", "cart"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.features[0].scenarios[0].status", is("NEVER_RUN")));
     }
 
     @Test

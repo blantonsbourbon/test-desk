@@ -115,6 +115,10 @@ public final class TestExecution {
         if (status.isTerminal()) {
             return;
         }
+        if (status == ExecutionStatus.QUEUED) {
+            markRunnerError("Runner completed before execution started");
+            return;
+        }
 
         List<ScenarioExecutionResult> updated = new ArrayList<>();
         boolean hasError = false;
@@ -123,11 +127,13 @@ public final class TestExecution {
         boolean hasSkipped = false;
         for (ScenarioExecutionResult result : results) {
             ScenarioResultUpdate update = updates.get(result.resultId());
-            ScenarioExecutionStatus scenarioStatus = update == null
+            ScenarioExecutionStatus scenarioStatus = update == null || update.status() == null
                     ? ScenarioExecutionStatus.ERROR
                     : update.status();
             long durationMs = update == null ? 0 : update.durationMs();
-            String message = update == null ? "Runner returned no result for this scenario" : update.errorMessage();
+            String message = update == null || update.status() == null
+                    ? "Runner returned no valid result for this scenario"
+                    : update.errorMessage();
             updated.add(new ScenarioExecutionResult(
                     result.resultId(), result.scenarioId(), result.scenarioName(), result.exampleValues(),
                     scenarioStatus, durationMs, message));
@@ -142,6 +148,13 @@ public final class TestExecution {
                 : hasCancellation ? ExecutionStatus.CANCELLED
                 : hasSkipped ? ExecutionStatus.FAILED
                 : ExecutionStatus.PASSED;
+        if (status == ExecutionStatus.ERROR) {
+            errorMessage = updated.stream()
+                    .map(ScenarioExecutionResult::errorMessage)
+                    .filter(message -> message != null && !message.isBlank())
+                    .findFirst()
+                    .orElse("One or more scenarios could not be executed");
+        }
         completedAt = Instant.now();
     }
 
