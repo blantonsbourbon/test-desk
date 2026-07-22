@@ -1,110 +1,100 @@
 # Design system — Test Control Plane
 
-Product-mode design language for the Angular console. Align implementation with this file and `docs/frontend-design.md`.
+Product-mode design language for the Angular console. Visual language is inspired by [TestDino](https://testdino.com) product chrome (light SaaS dashboard), adapted for dense BDD catalog / execution workflows.
 
 ## Aesthetic direction
 
-**Control room for BDD ops.** Dark indigo-black surfaces, teal accent, coral failure, amber warning. Borders over shadows. High information density, fast horizontal scan of tables and badges.
+**Light test-intelligence console.** Off-white canvas, pure white cards, soft gray borders, near-black primary actions, and tinted status chips. Prefer quiet density over decorative chrome. Borders + faint card shadow for hierarchy; stronger elevation only on dialogs/drawers/toasts.
+
+Anti-references: dark cyber control rooms, teal-on-indigo gradients, purple SaaS gradients, Inter-only marketing heroes.
 
 ## Color tokens
 
-Use CSS variables from `frontend/src/styles.scss`. Prefer tokens over hex literals in components.
+Defined in `frontend/src/styles.scss`. Prefer tokens over hex in components.
 
 | Token | Role |
 |-------|------|
-| `--bg` | App background (tinted near-black indigo) |
-| `--surface-1` | Primary panels / cards |
-| `--surface-2` | Inset controls, secondary panels |
-| `--border-subtle` / `--border-strong` | Dividers and emphasis borders |
-| `--text` / `--text-muted` | Body and secondary |
-| `--accent` / `--success` | Teal — primary action + pass |
-| `--danger` | Coral — fail / error |
-| `--warning` | Amber — queued / caution |
-| `--focus-ring` | Keyboard focus outline |
-| `--overlay` | Modal/drawer scrim |
-| `--shadow-drawer` / `--shadow-dialog` | Elevation only for overlays |
-
-Tinted neutrals only — no pure `#000` / `#fff` as large surfaces.
+| `--bg` | App canvas (`#f5f6f7`) |
+| `--sidebar` | Navigation rail (`#fafafa`) |
+| `--surface-1` | Cards / panels (white) |
+| `--surface-2` | Inset rows, hover, muted fill |
+| `--border-subtle` / `--border-strong` | `#e8e8e8` / `#d4d4d4` |
+| `--text` / `--text-muted` | Near-black / `#737373` |
+| `--accent` | Near-black primary CTA (`#070707`) + white label |
+| `--success` / `--success-bg` | Passed / synced (`#007e46` / soft green) |
+| `--danger` / `--danger-bg` | Failed / error |
+| `--warning` / `--warning-bg` | Queued / caution |
+| `--running` / `--running-bg` | Running / syncing (cyan) |
+| `--info` / `--info-bg` | Links and informational accents (blue) |
+| `--table-header` | Warm off-white table head (`#fcfbf8`) |
 
 ### Status color rules
 
-- Passed / synced → success teal + text label + icon
-- Failed / error → danger coral (ERROR copy must mention infrastructure when applicable)
-- Running / syncing → accent teal, subtle live treatment
-- Queued → warning amber
-- Never run / cancelled / skipped → muted neutral
+- Passed / synced → success green text on soft green chip + label
+- Failed / error → danger red on soft red chip; ERROR copy must mention infrastructure when applicable
+- Running / syncing → cyan chip with optional pulse dot
+- Queued → amber chip
+- Never run / cancelled / skipped → neutral muted chip
+- Color is never the only channel (label always present)
 
 ## Typography
 
-- **UI:** IBM Plex Sans (400–700)
-- **IDs / paths / SHA / env:** IBM Plex Mono
+- **UI:** Geist (fallback Inter / system-ui)
+- **IDs / paths / SHA / env:** Geist Mono (fallback JetBrains Mono)
 - Base ~15px, line-height ~1.45
-- Page titles: ~1.5–1.55rem, slight negative tracking
-- Section labels: 0.72rem uppercase, letter-spacing 0.04em, muted
+- Titles: ~1.5rem, weight 600, tight tracking
+- Section labels: 0.72rem uppercase, letter-spacing 0.04em, muted, weight 600
 
 ## Spacing & layout
 
-- **8px baseline** (0.25rem steps)
-- Content max width ~1440px, centered
-- Sidebar ~16rem fixed; collapses to drawer under 900px
-- Radius: controls ~0.45rem, panels ~0.65rem, pills full round
-- Prefer border + background shift for hierarchy; reserve heavy shadow for dialogs/drawers/toasts
+- 8px baseline
+- Content max width ~1440px
+- Sidebar ~15.5rem; collapses under 900px
+- Radius base ~0.625rem (TestDino-like); controls slightly tighter
+- Soft card shadow only; no glassmorphism
 
 ## Components
 
 ### Panels & tables
 
-- `.panel` — bordered surface-1 container
-- Dense grid tables with uppercase muted headers
-- Row hover: low-opacity accent wash
-- Active/running rows: slightly stronger accent wash + optional status rail
-- Failed scenario rows may use a thin danger left rail (with badge still required)
+- White panels, 1px `#e8e8e8` border, light shadow
+- Table headers on warm `--table-header`
+- Row hover: surface-2 wash
+- Status left rails on failed/passed/running/queued rows
 
 ### Buttons
 
-- Primary: accent-tinted fill + border
-- Ghost: transparent, border on hover
-- Danger: coral-tinted
-- Min height ~2.35rem (sm ~2rem); disabled opacity ~0.55
+- **Primary:** solid near-black, white text (TestDino primary pattern)
+- Default: white + border
+- Ghost: no border until hover fill
+- Danger: soft red fill + danger text
 
 ### Chips & badges
 
-- Chips for tags/filters; active chip uses accent tint
-- Status badges: pill + icon + label (never color alone)
+- Soft tinted pills for status
+- Tag chips neutral; active chip uses black border + soft fill
 
 ### Drawers & dialogs
 
-- Drawer: right edge, border-left, soft shadow, Escape closes
-- Dialog: centered, stronger scrim, Escape closes without submit while submitting is blocked
-- Focus moves into dialog; do not trap after close
-
-### Empty / error states
-
-- Empty: short explanation + one clear action (clear filters / open catalog / sync)
-- Error banner: danger tint + Retry (or equivalent) always available
+- Light scrim, white surface, soft shadow
+- Escape closes; submitting blocks cancel on run dialog
 
 ## Motion
 
-- Short only (≤180ms): drawer slide, toast enter, sidebar
+- ≤160ms ease-out for drawer/dialog/toast
+- Pulse only on live running indicators
 - Honor `prefers-reduced-motion`
-- No bounce/elastic easing
-- Live “Refreshing…” for polling — not decorative spinners everywhere
-
-## Iconography
-
-Prefer compact inline SVG (stroke or solid, 16–18px) over ad-hoc Unicode where chrome is permanent (nav, run, close). Decorative marks stay muted; interactive icons inherit text color.
 
 ## Accessibility
 
-- Icon-only buttons require `aria-label`
-- Focus-visible rings use `--focus-ring` with offset
-- Keyboard: filters, env radios, drawers, run confirm
-- Status never conveyed by color alone
-- Dialogs: `role="dialog"`, `aria-modal`, labelled title
+- Icon-only controls need `aria-label`
+- Focus ring uses neutral dark soft ring
+- Keyboard paths for filters, env radios, drawers, run confirm
+- Status never color-only
 
 ## What not to change casually
 
 - Information architecture (Catalog / Executions / Sources)
 - Domain copy from `CONTEXT.md` / `docs/frontend-design.md`
 - Environment model (`dev` | `qa` only, no default)
-- Execution pinned to catalog revision semantics
+- Pin-to-revision semantics

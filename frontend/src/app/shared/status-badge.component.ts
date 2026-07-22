@@ -27,6 +27,7 @@ type BadgeStatus = ExecutionStatus | ScenarioExecutionStatus | SourceSyncStatus 
         border-radius: 999px;
         border: 1px solid var(--border-subtle);
         background: var(--surface-2);
+        color: var(--text-muted);
         font-size: 0.75rem;
         font-weight: 600;
         letter-spacing: 0.01em;
@@ -35,68 +36,46 @@ type BadgeStatus = ExecutionStatus | ScenarioExecutionStatus | SourceSyncStatus 
       }
 
       .badge__dot {
-        width: 0.45rem;
-        height: 0.45rem;
+        width: 0.42rem;
+        height: 0.42rem;
         border-radius: 50%;
-        background: var(--text-muted);
+        background: currentColor;
         flex-shrink: 0;
-        box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-muted) 18%, transparent);
+        opacity: 0.9;
       }
 
       .badge[data-status='passed'],
       .badge[data-status='synced'] {
-        color: #b8f5ec;
-        border-color: color-mix(in srgb, var(--success) 40%, transparent);
-        background: color-mix(in srgb, var(--success) 12%, transparent);
-      }
-
-      .badge[data-status='passed'] .badge__dot,
-      .badge[data-status='synced'] .badge__dot {
-        background: var(--success);
-        box-shadow: 0 0 0 2px color-mix(in srgb, var(--success) 22%, transparent);
+        color: var(--success);
+        border-color: color-mix(in srgb, var(--success) 22%, var(--border-subtle));
+        background: var(--success-bg);
       }
 
       .badge[data-status='failed'],
       .badge[data-status='error'] {
-        color: #ffd6d9;
-        border-color: color-mix(in srgb, var(--danger) 42%, transparent);
-        background: color-mix(in srgb, var(--danger) 13%, transparent);
-      }
-
-      .badge[data-status='failed'] .badge__dot,
-      .badge[data-status='error'] .badge__dot {
-        background: var(--danger);
-        box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 22%, transparent);
+        color: var(--danger);
+        border-color: color-mix(in srgb, var(--danger) 22%, var(--border-subtle));
+        background: var(--danger-bg);
       }
 
       .badge[data-status='running'],
       .badge[data-status='syncing'] {
-        color: #c8fff7;
-        border-color: color-mix(in srgb, var(--accent) 42%, transparent);
-        background: color-mix(in srgb, var(--accent) 12%, transparent);
-      }
-
-      .badge[data-status='running'] .badge__dot,
-      .badge[data-status='syncing'] .badge__dot {
-        background: var(--accent);
-        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent);
+        color: var(--running);
+        border-color: color-mix(in srgb, var(--running) 25%, var(--border-subtle));
+        background: var(--running-bg);
       }
 
       .badge[data-status='queued'] {
-        color: #ffe4b8;
-        border-color: color-mix(in srgb, var(--warning) 42%, transparent);
-        background: color-mix(in srgb, var(--warning) 12%, transparent);
-      }
-
-      .badge[data-status='queued'] .badge__dot {
-        background: var(--warning);
-        box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 22%, transparent);
+        color: var(--warning);
+        border-color: color-mix(in srgb, var(--warning) 25%, var(--border-subtle));
+        background: var(--warning-bg);
       }
 
       .badge[data-status='cancelled'],
       .badge[data-status='skipped'],
       .badge[data-status='never'] {
         color: var(--text-muted);
+        background: var(--surface-2);
       }
 
       @media (prefers-reduced-motion: no-preference) {
@@ -113,7 +92,7 @@ type BadgeStatus = ExecutionStatus | ScenarioExecutionStatus | SourceSyncStatus 
           transform: scale(1);
         }
         50% {
-          opacity: 0.55;
+          opacity: 0.45;
           transform: scale(0.85);
         }
       }

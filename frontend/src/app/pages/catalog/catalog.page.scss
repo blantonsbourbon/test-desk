@@ -51,6 +51,7 @@
   background: var(--surface-1);
   padding: 0.95rem 1rem;
   overflow: hidden;
+  box-shadow: var(--shadow-card);
 }
 
 .stat-card::before {
@@ -61,12 +62,10 @@
   bottom: 0;
   width: 3px;
   background: var(--border-strong);
-  opacity: 0.7;
 }
 
 .stat-card--accent::before {
-  background: var(--accent);
-  opacity: 1;
+  background: var(--success);
 }
 
 .stat-card__label {
@@ -149,7 +148,7 @@
 }
 
 .feature__header:hover {
-  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+  background: var(--surface-2);
 }
 
 .feature:has(.scenario-table) .feature__header {
@@ -245,7 +244,7 @@
   letter-spacing: 0.04em;
   font-weight: 600;
   border-bottom: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--surface-2) 45%, transparent);
+  background: var(--table-header);
 }
 
 .scenario-table__row {
@@ -260,7 +259,7 @@
 
 .scenario-table__row:hover,
 .scenario-table__row:focus-visible {
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  background: var(--surface-2);
   outline: none;
 }
 

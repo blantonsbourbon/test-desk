@@ -160,7 +160,7 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
         display: flex;
         flex-direction: column;
         background: var(--surface-1);
-        border-left: 1px solid var(--border-strong);
+        border-left: 1px solid var(--border-subtle);
         box-shadow: var(--shadow-drawer);
       }
 
@@ -263,7 +263,7 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
 
       .step-keyword {
         font-weight: 700;
-        color: var(--accent);
+        color: var(--info);
         font-family: var(--font-mono);
         font-size: 0.78rem;
         padding-top: 0.1rem;
@@ -317,7 +317,8 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
       }
 
       .recent__link:hover {
-        border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+        border-color: var(--border-strong);
+        background: var(--surface-1);
       }
 
       .recent__time {

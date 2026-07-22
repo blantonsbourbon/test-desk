@@ -39,10 +39,14 @@ Company-internal console for discovering BDD test definitions from Git, launchin
 
 Concise, operational English. Prefer “Sync source”, “Run in qa”, “Never run” over marketing fluff. Technical IDs (SHA, paths, execution IDs) use monospace.
 
+## Visual reference
+
+Light product chrome inspired by [TestDino](https://testdino.com): white cards, soft borders, near-black primary buttons, Geist-like type, tinted status chips. Keep **product density** — do not copy marketing hero layouts.
+
 ## Anti-references
 
-- SaaS marketing landing pages, hero sections, Inter/purple-blue gradients
-- Nested cards-in-cards, large empty whitespace, bounce/elastic motion
-- Pure black/white without tint, gray text on colored backgrounds
+- Dark indigo “control room” skins, teal-on-navy gradients
+- Nested cards-in-cards, large empty marketing whitespace, bounce/elastic motion
+- Purple SaaS gradients, glassmorphism, neon cyberpunk chrome
 - Character soup as the only icon system (prefer consistent SVG marks)
-- “AI dashboard” glassmorphism or neon cyberpunk chrome
+- Color-only status without text labels

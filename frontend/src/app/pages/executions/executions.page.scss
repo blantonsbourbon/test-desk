@@ -45,7 +45,7 @@
   letter-spacing: 0.04em;
   font-weight: 600;
   border-bottom: 1px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--surface-2) 45%, transparent);
+  background: var(--table-header);
 }
 
 .table__row {
@@ -57,12 +57,12 @@
 
 .table__row:hover,
 .table__row:focus-visible {
-  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  background: var(--surface-2);
   outline: none;
 }
 
 .table__row--active {
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  background: var(--running-bg);
 }
 
 .id-cell {

@@ -130,7 +130,7 @@ import { formatAbsolute, shortSha } from '../core/format';
         max-height: calc(100vh - 2rem);
         overflow: auto;
         background: var(--surface-1);
-        border: 1px solid var(--border-strong);
+        border: 1px solid var(--border-subtle);
         border-radius: var(--radius-xl);
         box-shadow: var(--shadow-dialog);
         display: flex;
@@ -187,10 +187,10 @@ import { formatAbsolute, shortSha } from '../core/format';
       }
 
       .pin-card {
-        border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border-subtle));
+        border: 1px solid var(--border-subtle);
         border-radius: 0.55rem;
         padding: 0.85rem 1rem;
-        background: color-mix(in srgb, var(--accent) 6%, var(--surface-2));
+        background: var(--table-header);
       }
 
       .pin-card__label {
@@ -199,6 +199,7 @@ import { formatAbsolute, shortSha } from '../core/format';
         letter-spacing: 0.04em;
         color: var(--text-muted);
         margin-bottom: 0.3rem;
+        font-weight: 600;
       }
 
       .pin-card__sha {
@@ -211,7 +212,7 @@ import { formatAbsolute, shortSha } from '../core/format';
       .pin-card__note {
         margin-top: 0.6rem;
         font-size: 0.8rem;
-        color: var(--accent-strong);
+        color: var(--info);
         font-weight: 600;
         display: flex;
         align-items: center;
@@ -305,17 +306,17 @@ import { formatAbsolute, shortSha } from '../core/format';
 
       .env-option--selected,
       .env-option:has(input:checked) {
-        border-color: color-mix(in srgb, var(--accent) 55%, transparent);
-        background: color-mix(in srgb, var(--accent) 10%, var(--surface-2));
-        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+        border-color: var(--text);
+        background: var(--surface-1);
+        box-shadow: inset 0 0 0 1px var(--text);
       }
 
       .error-banner {
         padding: 0.65rem 0.75rem;
         border-radius: 0.4rem;
-        border: 1px solid color-mix(in srgb, var(--danger) 50%, transparent);
-        background: color-mix(in srgb, var(--danger) 12%, transparent);
-        color: #ffd6d9;
+        border: 1px solid color-mix(in srgb, var(--danger) 28%, var(--border-subtle));
+        background: var(--danger-bg);
+        color: var(--danger);
         font-size: 0.875rem;
       }
 

@@ -118,7 +118,7 @@ import { ToastHostComponent } from '../shared/toast-host.component';
               />
             </svg>
           </button>
-          <div class="topbar__title">Control room</div>
+          <div class="topbar__title">Test Control Plane</div>
         </header>
         <main class="content">
           <router-outlet />
@@ -142,10 +142,10 @@ import { ToastHostComponent } from '../shared/toast-host.component';
         height: 100vh;
         display: flex;
         flex-direction: column;
-        gap: 1.5rem;
-        padding: 1.25rem 0.9rem;
+        gap: 1.35rem;
+        padding: 1.15rem 0.85rem;
         border-right: 1px solid var(--border-subtle);
-        background: linear-gradient(180deg, var(--bg-elevated) 0%, #080e1a 100%);
+        background: var(--sidebar);
         z-index: 30;
       }
 
@@ -157,37 +157,36 @@ import { ToastHostComponent } from '../shared/toast-host.component';
       }
 
       .brand__mark {
-        width: 2.25rem;
-        height: 2.25rem;
+        width: 2.15rem;
+        height: 2.15rem;
         border-radius: 0.5rem;
         display: grid;
         place-items: center;
-        color: #041018;
-        background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-        box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+        color: var(--accent-foreground);
+        background: var(--accent);
         flex-shrink: 0;
       }
 
       .brand__mark svg {
-        width: 1.15rem;
-        height: 1.15rem;
+        width: 1.1rem;
+        height: 1.1rem;
       }
 
       .brand__title {
-        font-weight: 700;
-        font-size: 0.95rem;
-        letter-spacing: -0.01em;
+        font-weight: 650;
+        font-size: 0.92rem;
+        letter-spacing: -0.02em;
       }
 
       .brand__sub {
         color: var(--text-muted);
-        font-size: 0.75rem;
+        font-size: 0.72rem;
       }
 
       .nav {
         display: flex;
         flex-direction: column;
-        gap: 0.3rem;
+        gap: 0.2rem;
       }
 
       .nav__link {
@@ -195,11 +194,12 @@ import { ToastHostComponent } from '../shared/toast-host.component';
         display: flex;
         align-items: center;
         gap: 0.65rem;
-        padding: 0.65rem 0.75rem;
-        border-radius: 0.5rem;
+        padding: 0.6rem 0.75rem;
+        border-radius: var(--radius-md);
         color: var(--text-muted);
         text-decoration: none;
         border: 1px solid transparent;
+        font-weight: 500;
         transition:
           color 0.12s ease,
           background 0.12s ease,
@@ -208,13 +208,14 @@ import { ToastHostComponent } from '../shared/toast-host.component';
 
       .nav__link:hover {
         color: var(--text);
-        background: color-mix(in srgb, var(--surface-2) 80%, transparent);
+        background: var(--surface-2);
       }
 
       .nav__link--active {
         color: var(--text);
-        background: color-mix(in srgb, var(--accent) 12%, transparent);
-        border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+        background: var(--surface-1);
+        border-color: var(--border-subtle);
+        box-shadow: var(--shadow-card);
       }
 
       .nav__link--active::before {
@@ -266,7 +267,7 @@ import { ToastHostComponent } from '../shared/toast-host.component';
         gap: 0.75rem;
         padding: 0.75rem 1rem;
         border-bottom: 1px solid var(--border-subtle);
-        background: color-mix(in srgb, var(--bg) 92%, #000);
+        background: color-mix(in srgb, var(--surface-1) 92%, transparent);
         position: sticky;
         top: 0;
         z-index: 20;

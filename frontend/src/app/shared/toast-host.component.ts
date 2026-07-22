@@ -50,9 +50,9 @@ import { ToastService } from '../core/toast.service';
         align-items: flex-start;
         gap: 0.65rem;
         padding: 0.8rem 0.85rem 0.8rem 0.7rem;
-        border-radius: 0.5rem;
-        border: 1px solid var(--border-strong);
-        background: var(--surface-2);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-subtle);
+        background: var(--surface-1);
         box-shadow: var(--shadow-toast);
         color: var(--text);
         font-size: 0.875rem;
@@ -75,8 +75,8 @@ import { ToastService } from '../core/toast.service';
       }
 
       .toast[data-kind='success'] {
-        border-color: color-mix(in srgb, var(--success) 45%, transparent);
-        background: color-mix(in srgb, var(--success) 8%, var(--surface-2));
+        border-color: color-mix(in srgb, var(--success) 28%, var(--border-subtle));
+        background: var(--success-bg);
       }
 
       .toast[data-kind='success'] .toast__bar {
@@ -84,8 +84,8 @@ import { ToastService } from '../core/toast.service';
       }
 
       .toast[data-kind='error'] {
-        border-color: color-mix(in srgb, var(--danger) 55%, transparent);
-        background: color-mix(in srgb, var(--danger) 10%, var(--surface-2));
+        border-color: color-mix(in srgb, var(--danger) 30%, var(--border-subtle));
+        background: var(--danger-bg);
       }
 
       .toast[data-kind='error'] .toast__bar {
@@ -93,12 +93,12 @@ import { ToastService } from '../core/toast.service';
       }
 
       .toast[data-kind='info'] {
-        border-color: color-mix(in srgb, var(--accent) 45%, transparent);
-        background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+        border-color: color-mix(in srgb, var(--info) 28%, var(--border-subtle));
+        background: var(--info-bg);
       }
 
       .toast[data-kind='info'] .toast__bar {
-        background: var(--accent);
+        background: var(--info);
       }
 
       .toast__close {
@@ -116,7 +116,7 @@ import { ToastService } from '../core/toast.service';
 
       .toast__close:hover {
         color: var(--text);
-        background: color-mix(in srgb, var(--surface-3) 80%, transparent);
+        background: color-mix(in srgb, var(--surface-2) 80%, transparent);
       }
 
       .toast__close svg {
