@@ -24,13 +24,20 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
     >
       <header class="drawer__header">
         <div>
-          <div class="muted small">Scenario detail</div>
+          <div class="muted small drawer__eyebrow">Scenario detail</div>
           <h2 id="scenario-detail-title">
             {{ detail?.name || (loading ? 'Loading…' : 'Scenario') }}
           </h2>
         </div>
         <button type="button" class="icon-btn" aria-label="Close detail panel" (click)="closed.emit()">
-          ×
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path
+              d="M4 4l8 8M12 4l-8 8"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+          </svg>
         </button>
       </header>
 
@@ -49,9 +56,9 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
               <dt>Type</dt>
               <dd>{{ kindLabel(detail.kind) }}</dd>
             </div>
-            <div>
+            <div class="meta-grid__full">
               <dt>Source</dt>
-              <dd class="mono">{{ detail.sourcePath }}:{{ detail.line }}</dd>
+              <dd class="mono source-path">{{ detail.sourcePath }}:{{ detail.line }}</dd>
             </div>
             <div>
               <dt>Status</dt>
@@ -73,7 +80,7 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
               @for (step of detail.steps; track $index) {
                 <li>
                   <span class="step-keyword">{{ step.keyword }}</span>
-                  <span>{{ step.text }}</span>
+                  <span class="step-text">{{ step.text }}</span>
                 </li>
               }
             </ol>
@@ -93,14 +100,14 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
                 </div>
               </div>
             } @else {
-              <p class="muted">This scenario has never been run.</p>
+              <p class="muted empty-hint">This scenario has never been run.</p>
             }
           </section>
 
           <section>
             <h3>Recent executions</h3>
             @if (!detail.recentExecutions.length) {
-              <p class="muted">No recent executions.</p>
+              <p class="muted empty-hint">No recent executions.</p>
             } @else {
               <ul class="recent">
                 @for (item of detail.recentExecutions; track item.id) {
@@ -108,8 +115,8 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
                     <a [routerLink]="['/executions', item.id]" class="recent__link">
                       <app-status-badge [status]="item.status" />
                       <span class="mono">{{ item.environment }}</span>
-                      <span class="mono">{{ shortSha(item.revision.commit) }}</span>
-                      <span class="muted small">{{ formatRelative(item.requestedAt) }}</span>
+                      <span class="mono muted">{{ shortSha(item.revision.commit) }}</span>
+                      <span class="muted small recent__time">{{ formatRelative(item.requestedAt) }}</span>
                     </a>
                   </li>
                 }
@@ -122,10 +129,13 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
       <footer class="drawer__footer">
         <button
           type="button"
-          class="btn btn--primary"
+          class="btn btn--primary drawer__run"
           [disabled]="!detail"
           (click)="run.emit()"
         >
+          <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M5 3.5v9l8-4.5-8-4.5z" fill="currentColor" />
+          </svg>
           Run scenario
         </button>
       </footer>
@@ -136,7 +146,7 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
       .overlay {
         position: fixed;
         inset: 0;
-        background: rgba(2, 6, 18, 0.45);
+        background: var(--overlay);
         z-index: 35;
       }
 
@@ -151,7 +161,7 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
         flex-direction: column;
         background: var(--surface-1);
         border-left: 1px solid var(--border-strong);
-        box-shadow: -16px 0 48px rgba(0, 0, 0, 0.35);
+        box-shadow: var(--shadow-drawer);
       }
 
       .drawer__header,
@@ -170,9 +180,17 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
         margin-top: auto;
       }
 
+      .drawer__eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-size: 0.72rem;
+      }
+
       .drawer__header h2 {
-        margin: 0.2rem 0 0;
-        font-size: 1.05rem;
+        margin: 0.25rem 0 0;
+        font-size: 1.08rem;
+        letter-spacing: -0.01em;
+        line-height: 1.3;
       }
 
       .drawer__body {
@@ -180,14 +198,18 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
         overflow: auto;
         display: flex;
         flex-direction: column;
-        gap: 1.15rem;
+        gap: 1.2rem;
       }
 
       .meta-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 0.75rem;
+        gap: 0.8rem;
         margin: 0;
+      }
+
+      .meta-grid__full {
+        grid-column: 1 / -1;
       }
 
       .meta-grid dt {
@@ -198,15 +220,22 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
       }
 
       .meta-grid dd {
-        margin: 0.2rem 0 0;
+        margin: 0.25rem 0 0;
+      }
+
+      .source-path {
+        word-break: break-all;
+        font-size: 0.85rem;
+        color: var(--text-muted);
       }
 
       h3 {
         margin: 0 0 0.55rem;
-        font-size: 0.85rem;
+        font-size: 0.72rem;
         text-transform: uppercase;
         letter-spacing: 0.04em;
         color: var(--text-muted);
+        font-weight: 600;
       }
 
       .steps {
@@ -216,11 +245,12 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
         border: 1px solid var(--border-subtle);
         border-radius: 0.5rem;
         overflow: hidden;
+        background: var(--surface-2);
       }
 
       .steps li {
         display: grid;
-        grid-template-columns: 4.5rem 1fr;
+        grid-template-columns: 4.25rem 1fr;
         gap: 0.5rem;
         padding: 0.55rem 0.75rem;
         border-top: 1px solid var(--border-subtle);
@@ -235,7 +265,13 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
         font-weight: 700;
         color: var(--accent);
         font-family: var(--font-mono);
-        font-size: 0.8rem;
+        font-size: 0.78rem;
+        padding-top: 0.1rem;
+      }
+
+      .step-text {
+        color: var(--text);
+        line-height: 1.4;
       }
 
       .panel-inset {
@@ -250,6 +286,11 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
         align-items: center;
         gap: 0.65rem;
         margin-bottom: 0.35rem;
+      }
+
+      .empty-hint {
+        margin: 0;
+        font-size: 0.9rem;
       }
 
       .recent {
@@ -272,16 +313,30 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
         text-decoration: none;
         color: inherit;
         background: var(--surface-2);
+        transition: border-color 0.12s ease;
       }
 
       .recent__link:hover {
         border-color: color-mix(in srgb, var(--accent) 40%, transparent);
       }
 
+      .recent__time {
+        margin-left: auto;
+      }
+
       .tag-row {
         display: flex;
         flex-wrap: wrap;
         gap: 0.35rem;
+      }
+
+      .drawer__run {
+        width: 100%;
+      }
+
+      .drawer__run svg {
+        width: 0.85rem;
+        height: 0.85rem;
       }
 
       .small {
@@ -296,8 +351,8 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
 
       @keyframes slide-in {
         from {
-          transform: translateX(1rem);
-          opacity: 0.6;
+          transform: translateX(0.75rem);
+          opacity: 0.65;
         }
         to {
           transform: translateX(0);

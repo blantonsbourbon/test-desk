@@ -43,7 +43,26 @@
           [disabled]="!selectedSourceId || syncing"
           (click)="syncSource()"
         >
-          {{ syncing ? 'Syncing…' : 'Sync source' }}
+          @if (syncing) {
+            Syncing…
+          } @else {
+            <svg class="btn__icon" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M3 8a5 5 0 0 1 8.5-3.5M13 8a5 5 0 0 1-8.5 3.5"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+              />
+              <path
+                d="M11.5 2.5V4.5H9.5M4.5 13.5V11.5H6.5"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Sync source
+          }
         </button>
       </div>
     </div>
@@ -83,7 +102,7 @@
         <div class="stat-card__label">Features</div>
         <div class="stat-card__value">{{ catalog.stats.featureCount }}</div>
       </article>
-      <article class="stat-card">
+      <article class="stat-card stat-card--accent">
         <div class="stat-card__label">Pass rate (24h)</div>
         <div class="stat-card__value">{{ passRateLabel(catalog.stats.passRate) }}</div>
         <div class="stat-card__hint">
@@ -153,16 +172,36 @@
     </section>
 
     @if (loading) {
-      <div class="panel empty">Loading catalog…</div>
+      <div class="panel empty">
+        <p class="empty__title">Loading catalog…</p>
+        <p class="empty__body">Fetching the latest synchronized scenarios for this source.</p>
+      </div>
     } @else if (catalog.features.length === 0) {
       <div class="panel empty">
         @if (emptyBecauseFilters) {
-          No scenarios match the current filters.
-          <button type="button" class="btn btn--ghost btn--sm" (click)="clearFilters()">
-            Clear filters
-          </button>
+          <p class="empty__title">No matching scenarios</p>
+          <p class="empty__body">Nothing matches the current search, status, or tag filters.</p>
+          <div class="empty__actions">
+            <button type="button" class="btn btn--ghost btn--sm" (click)="clearFilters()">
+              Clear filters
+            </button>
+          </div>
         } @else {
-          This source has no scenarios yet. Sync the source or check the repository.
+          <p class="empty__title">No scenarios in this source</p>
+          <p class="empty__body">
+            Sync the Git source or verify that the repository contains
+            <span class="mono">.feature</span> files on the tracked branch.
+          </p>
+          <div class="empty__actions">
+            <button
+              type="button"
+              class="btn btn--primary btn--sm"
+              [disabled]="syncing"
+              (click)="syncSource()"
+            >
+              Sync source
+            </button>
+          </div>
         }
       </div>
     } @else {
@@ -177,7 +216,20 @@
                 [attr.aria-label]="(isCollapsed(feature.id) ? 'Expand' : 'Collapse') + ' feature ' + feature.name"
                 (click)="$event.stopPropagation(); toggleFeature(feature.id)"
               >
-                {{ isCollapsed(feature.id) ? '▸' : '▾' }}
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  aria-hidden="true"
+                  [class.collapse-btn__icon--open]="!isCollapsed(feature.id)"
+                >
+                  <path
+                    d="M6 4l4 4-4 4"
+                    stroke="currentColor"
+                    stroke-width="1.6"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
               </button>
 
               <div class="feature__meta">
@@ -220,6 +272,8 @@
                     class="scenario-table__row"
                     role="row"
                     tabindex="0"
+                    [class.row-rail--failed]="scenario.status === 'FAILED'"
+                    [class.row-rail--passed]="scenario.status === 'PASSED'"
                     (click)="openDetail(scenario)"
                     (keydown.enter)="openDetail(scenario)"
                     (keydown.space)="$event.preventDefault(); openDetail(scenario)"
@@ -233,7 +287,7 @@
                       />
                     </div>
                     <div role="cell" class="scenario-name">
-                      <div>{{ scenario.name }}</div>
+                      <div class="scenario-name__text">{{ scenario.name }}</div>
                       @if (scenario.tags.length) {
                         <div class="tag-row">
                           @for (tag of scenario.tags; track tag) {
@@ -249,7 +303,7 @@
                       <app-status-badge [status]="scenario.status" />
                     </div>
                     <div role="cell" class="mono">{{ formatDuration(scenario.durationMs) }}</div>
-                    <div role="cell">{{ formatRelative(scenario.lastRunAt) }}</div>
+                    <div role="cell" class="last-run">{{ formatRelative(scenario.lastRunAt) }}</div>
                     <div role="cell" class="col-actions" (click)="$event.stopPropagation()">
                       <button
                         type="button"
@@ -257,7 +311,9 @@
                         [attr.aria-label]="'Run scenario ' + scenario.name"
                         (click)="openRunForScenario(scenario, feature, $event)"
                       >
-                        ▶
+                        <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                          <path d="M5 3.5v9l8-4.5-8-4.5z" fill="currentColor" />
+                        </svg>
                       </button>
                     </div>
                   </div>
@@ -269,7 +325,10 @@
       </div>
     }
   } @else if (loading) {
-    <div class="panel empty">Loading…</div>
+    <div class="panel empty">
+      <p class="empty__title">Loading…</p>
+      <p class="empty__body">Connecting to the control plane API.</p>
+    </div>
   }
 </div>
 

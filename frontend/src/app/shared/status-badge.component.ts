@@ -13,7 +13,7 @@ type BadgeStatus = ExecutionStatus | ScenarioExecutionStatus | SourceSyncStatus 
   standalone: true,
   template: `
     <span class="badge" [attr.data-status]="tone" [attr.title]="label">
-      <span class="badge__icon" aria-hidden="true">{{ icon }}</span>
+      <span class="badge__dot" aria-hidden="true"></span>
       <span class="badge__text">{{ label }}</span>
     </span>
   `,
@@ -22,8 +22,8 @@ type BadgeStatus = ExecutionStatus | ScenarioExecutionStatus | SourceSyncStatus 
       .badge {
         display: inline-flex;
         align-items: center;
-        gap: 0.35rem;
-        padding: 0.15rem 0.55rem;
+        gap: 0.4rem;
+        padding: 0.18rem 0.55rem 0.18rem 0.45rem;
         border-radius: 999px;
         border: 1px solid var(--border-subtle);
         background: var(--surface-2);
@@ -31,42 +31,66 @@ type BadgeStatus = ExecutionStatus | ScenarioExecutionStatus | SourceSyncStatus 
         font-weight: 600;
         letter-spacing: 0.01em;
         white-space: nowrap;
+        line-height: 1.2;
       }
 
-      .badge__icon {
-        font-size: 0.7rem;
-        line-height: 1;
+      .badge__dot {
+        width: 0.45rem;
+        height: 0.45rem;
+        border-radius: 50%;
+        background: var(--text-muted);
+        flex-shrink: 0;
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--text-muted) 18%, transparent);
       }
 
-      .badge[data-status='passed'] {
-        color: var(--success);
+      .badge[data-status='passed'],
+      .badge[data-status='synced'] {
+        color: #b8f5ec;
         border-color: color-mix(in srgb, var(--success) 40%, transparent);
         background: color-mix(in srgb, var(--success) 12%, transparent);
       }
 
-      .badge[data-status='failed'] {
-        color: var(--danger);
-        border-color: color-mix(in srgb, var(--danger) 40%, transparent);
-        background: color-mix(in srgb, var(--danger) 12%, transparent);
+      .badge[data-status='passed'] .badge__dot,
+      .badge[data-status='synced'] .badge__dot {
+        background: var(--success);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--success) 22%, transparent);
       }
 
+      .badge[data-status='failed'],
       .badge[data-status='error'] {
-        color: var(--danger);
-        border-color: color-mix(in srgb, var(--danger) 50%, transparent);
-        background: color-mix(in srgb, var(--danger) 16%, transparent);
+        color: #ffd6d9;
+        border-color: color-mix(in srgb, var(--danger) 42%, transparent);
+        background: color-mix(in srgb, var(--danger) 13%, transparent);
+      }
+
+      .badge[data-status='failed'] .badge__dot,
+      .badge[data-status='error'] .badge__dot {
+        background: var(--danger);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--danger) 22%, transparent);
       }
 
       .badge[data-status='running'],
       .badge[data-status='syncing'] {
-        color: var(--accent);
-        border-color: color-mix(in srgb, var(--accent) 40%, transparent);
+        color: #c8fff7;
+        border-color: color-mix(in srgb, var(--accent) 42%, transparent);
         background: color-mix(in srgb, var(--accent) 12%, transparent);
       }
 
+      .badge[data-status='running'] .badge__dot,
+      .badge[data-status='syncing'] .badge__dot {
+        background: var(--accent);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 28%, transparent);
+      }
+
       .badge[data-status='queued'] {
-        color: var(--warning);
-        border-color: color-mix(in srgb, var(--warning) 40%, transparent);
+        color: #ffe4b8;
+        border-color: color-mix(in srgb, var(--warning) 42%, transparent);
         background: color-mix(in srgb, var(--warning) 12%, transparent);
+      }
+
+      .badge[data-status='queued'] .badge__dot {
+        background: var(--warning);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 22%, transparent);
       }
 
       .badge[data-status='cancelled'],
@@ -75,10 +99,23 @@ type BadgeStatus = ExecutionStatus | ScenarioExecutionStatus | SourceSyncStatus 
         color: var(--text-muted);
       }
 
-      .badge[data-status='synced'] {
-        color: var(--success);
-        border-color: color-mix(in srgb, var(--success) 35%, transparent);
-        background: color-mix(in srgb, var(--success) 10%, transparent);
+      @media (prefers-reduced-motion: no-preference) {
+        .badge[data-status='running'] .badge__dot,
+        .badge[data-status='syncing'] .badge__dot {
+          animation: pulse-dot 1.4s ease-in-out infinite;
+        }
+      }
+
+      @keyframes pulse-dot {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.55;
+          transform: scale(0.85);
+        }
       }
     `,
   ],
@@ -95,28 +132,5 @@ export class StatusBadgeComponent {
       return 'never';
     }
     return String(this.status).toLowerCase();
-  }
-
-  get icon(): string {
-    switch (this.status) {
-      case 'PASSED':
-      case 'SYNCED':
-        return '✓';
-      case 'FAILED':
-        return '✗';
-      case 'ERROR':
-        return '!';
-      case 'RUNNING':
-      case 'SYNCING':
-        return '◉';
-      case 'QUEUED':
-        return '◷';
-      case 'CANCELLED':
-        return '⊘';
-      case 'SKIPPED':
-        return '–';
-      default:
-        return '○';
-    }
   }
 }

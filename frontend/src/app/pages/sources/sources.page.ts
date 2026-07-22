@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, HostListener, OnInit, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ApiClientError, ApiService } from '../../core/api.service';
 import {
@@ -30,6 +30,13 @@ export class SourcesPage implements OnInit {
 
   ngOnInit(): void {
     this.load();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.selected) {
+      this.close();
+    }
   }
 
   load(): void {

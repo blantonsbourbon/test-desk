@@ -31,7 +31,10 @@
 
       <div class="page-header__actions">
         @if (polling) {
-          <span class="live-pill" aria-live="polite">Refreshing…</span>
+          <span class="live-pill" aria-live="polite">
+            <span class="live-pill__dot" aria-hidden="true"></span>
+            Refreshing…
+          </span>
         }
         @if (execution && isActiveStatus(execution.status)) {
           <button
@@ -55,7 +58,10 @@
   }
 
   @if (loading) {
-    <div class="panel empty">Loading execution…</div>
+    <div class="panel empty">
+      <p class="empty__title">Loading execution…</p>
+      <p class="empty__body">Fetching summary and scenario results.</p>
+    </div>
   } @else if (execution) {
     @if (execution.status === 'ERROR') {
       <div class="error-banner error-banner--block" role="alert">
@@ -67,46 +73,47 @@
     <section class="summary panel" aria-label="Execution summary">
       <div class="summary__item">
         <div class="label">Environment</div>
-        <div class="mono">{{ execution.environment }}</div>
+        <div class="mono value">{{ execution.environment }}</div>
       </div>
       <div class="summary__item">
         <div class="label">Catalog revision</div>
-        <div class="mono">{{ shortSha(execution.revision.commit) }}</div>
+        <div class="mono value">{{ shortSha(execution.revision.commit) }}</div>
         <div class="muted small">{{ execution.revision.branch }}</div>
       </div>
       <div class="summary__item">
         <div class="label">Source</div>
-        <div class="mono">{{ execution.sourceId }}</div>
+        <div class="mono value">{{ execution.sourceId }}</div>
       </div>
       <div class="summary__item">
         <div class="label">Scenarios</div>
-        <div>{{ execution.results.length }}</div>
+        <div class="value">{{ execution.results.length }}</div>
       </div>
       <div class="summary__item">
         <div class="label">Requested by</div>
-        <div>{{ execution.requestedBy }}</div>
+        <div class="value">{{ execution.requestedBy }}</div>
       </div>
       <div class="summary__item">
         <div class="label">Requested</div>
-        <div>{{ formatAbsolute(execution.requestedAt) }}</div>
+        <div class="value">{{ formatAbsolute(execution.requestedAt) }}</div>
       </div>
       <div class="summary__item">
         <div class="label">Started</div>
-        <div>{{ formatAbsolute(execution.startedAt) }}</div>
+        <div class="value">{{ formatAbsolute(execution.startedAt) }}</div>
       </div>
       <div class="summary__item">
         <div class="label">Completed</div>
-        <div>{{ formatAbsolute(execution.completedAt) }}</div>
+        <div class="value">{{ formatAbsolute(execution.completedAt) }}</div>
       </div>
       <div class="summary__item">
         <div class="label">Duration</div>
-        <div class="mono">{{ formatDuration(execution.durationMs) }}</div>
+        <div class="mono value">{{ formatDuration(execution.durationMs) }}</div>
       </div>
     </section>
 
     <section class="results panel">
       <header class="results__header">
         <h2>Scenario results</h2>
+        <span class="results__count muted small">{{ execution.results.length }} rows</span>
       </header>
 
       <div class="results-table" role="table">
@@ -117,17 +124,28 @@
           <div role="columnheader">Error</div>
         </div>
         @for (result of execution.results; track result.resultId) {
-          <div class="results-table__row" role="row">
+          <div
+            class="results-table__row"
+            role="row"
+            [class.row-rail--failed]="result.status === 'FAILED' || result.status === 'ERROR'"
+            [class.row-rail--passed]="result.status === 'PASSED'"
+          >
             <div role="cell">
-              <div>{{ result.scenarioName }}</div>
+              <div class="result-name">{{ result.scenarioName }}</div>
               @if (exampleLabel(result.exampleValues)) {
                 <div class="mono muted small">{{ exampleLabel(result.exampleValues) }}</div>
               }
-              <div class="mono muted small">{{ result.scenarioId }}</div>
+              <div class="mono muted small result-id">{{ result.scenarioId }}</div>
             </div>
             <div role="cell"><app-status-badge [status]="result.status" /></div>
             <div role="cell" class="mono">{{ formatDuration(result.durationMs) }}</div>
-            <div role="cell" class="error-cell">{{ result.errorMessage || '—' }}</div>
+            <div
+              role="cell"
+              class="error-cell"
+              [class.error-cell--present]="!!result.errorMessage"
+            >
+              {{ result.errorMessage || '—' }}
+            </div>
           </div>
         }
       </div>
