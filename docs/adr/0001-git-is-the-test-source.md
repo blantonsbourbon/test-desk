@@ -1,6 +1,6 @@
 # Git is the authoritative Test Source
 
-BDD test definitions remain in Git as the single source of truth. The Test Control Plane indexes them for discovery and execution but does not edit them, avoiding conflicting platform and repository versions while preserving existing review, history, and ownership workflows.
+BDD test definitions remain in Git as the single source of truth. Test Desk indexes them for discovery and execution but does not edit them, avoiding conflicting platform and repository versions while preserving existing review, history, and ownership workflows.
 
 ## Consequences
 

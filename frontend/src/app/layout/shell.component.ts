@@ -21,7 +21,7 @@ import { ToastHostComponent } from '../shared/toast-host.component';
             </svg>
           </div>
           <div>
-            <div class="brand__title">Test Control Plane</div>
+            <div class="brand__title">Test Desk</div>
             <div class="brand__sub">BDD catalog console</div>
           </div>
         </div>
@@ -118,7 +118,7 @@ import { ToastHostComponent } from '../shared/toast-host.component';
               />
             </svg>
           </button>
-          <div class="topbar__title">Test Control Plane</div>
+          <div class="topbar__title">Test Desk</div>
         </header>
         <main class="content">
           <router-outlet />

@@ -1,4 +1,4 @@
-# Design system — Test Control Plane
+# Design system — Test Desk
 
 Product-mode design language for the Angular console. Visual language is inspired by [TestDino](https://testdino.com) product chrome (light SaaS dashboard), adapted for dense BDD catalog / execution workflows.
 

@@ -12,7 +12,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     private final String[] allowedOrigins;
 
-    public WebConfig(@Value("${test-control-plane.cors.allowed-origins:http://localhost:3000}") String allowedOrigins) {
+    public WebConfig(@Value("${test-desk.cors.allowed-origins:http://localhost:3000}") String allowedOrigins) {
         this.allowedOrigins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .filter(origin -> !origin.isBlank())

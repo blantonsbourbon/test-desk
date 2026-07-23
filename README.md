@@ -1,4 +1,4 @@
-# Test Control Plane
+# Test Desk
 
 Spring Boot 3 backend and Angular 19 console for the internal BDD Test Catalog and execution console.
 

@@ -1,15 +1,15 @@
-# Test Control Plane
+# Test Desk
 
-The shared language for a company-internal platform that organizes test capabilities and controls their execution across external test infrastructure.
+The shared language for a company-internal product that organizes test capabilities and controls their execution across external test infrastructure.
 
 ## Language
 
-**Test Control Plane**:
+**Test Desk**:
 The internal product through which teams discover, manage, start, and observe automated tests, independently of the infrastructure that executes them.
-_Avoid_: Test platform, test runner, Playwright platform
+_Avoid_: Test platform, test runner, Playwright platform, Test Control Plane
 
 **Test Source**:
-The authoritative location where versioned test definitions are maintained. The Test Control Plane reflects a Test Source but does not redefine its contents.
+The authoritative location where versioned test definitions are maintained. Test Desk reflects a Test Source but does not redefine its contents.
 _Avoid_: Test database, platform copy
 
 **Test Catalog**:

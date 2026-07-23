@@ -12,10 +12,10 @@
     </parent>
 
     <groupId>com.acme</groupId>
-    <artifactId>test-control-plane</artifactId>
+    <artifactId>test-desk</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>test-control-plane</name>
-    <description>BDD test catalog and execution control plane</description>
+    <name>test-desk</name>
+    <description>BDD test catalog and execution console (Test Desk)</description>
 
     <properties>
         <java.version>17</java.version>

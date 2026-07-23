@@ -1,4 +1,4 @@
-# Test Control Plane — Frontend
+# Test Desk — Frontend
 
 Angular 19 console for the BDD **Test Catalog** and **Test Execution** APIs.
 
