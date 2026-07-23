@@ -4,6 +4,8 @@ Spring Boot 3 backend and Angular 19 console for the internal BDD Test Catalog a
 
 The frontend design is documented in [docs/frontend-design.md](docs/frontend-design.md). It includes the screen behavior and the `/api/v1` contract that the backend implements.
 
+The proposed MVP for supporting BDD, API, and integration tests through Ansible and Jenkins is documented in [docs/mvp-multi-test-execution.md](docs/mvp-multi-test-execution.md).
+
 ## Requirements
 
 - Java 17+
