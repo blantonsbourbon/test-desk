@@ -14,7 +14,20 @@ Test Desk will support test meaning and execution integration as two independent
 
 The MVP assumes Git remains the authoritative Test Source for every Test Type. Jenkins jobs and Ansible commands execute pinned Test Definitions; they are not the catalog or the source of definition metadata. If test definitions must instead be discovered from Jenkins, that is a separate catalog-provider project and is outside this MVP.
 
-## MVP outcome
+## Implementation status
+
+The repository currently implements the first generic vertical slice of this design. The slice keeps the existing BDD sample runnable while establishing the seams that later API, integration, Ansible, and Jenkins implementations will use.
+
+| Area | Implemented now | Still to implement |
+|---|---|---|
+| Catalog | Generic `CatalogEntry`, `TestGroup`, `TestType`, `DefinitionKind`, typed details, and a BDD simulation adapter | Git-backed synchronization and API/integration catalog adapters |
+| Execution | Server-managed profile resolution, `ExecutionOrchestrator`, connector interface, simulation connector, polling, cancellation, and normalized entry/case results | Durable storage, restart recovery, idempotent submission, and real Ansible/Jenkins connectors |
+| API | Generic `entryIds`, revision pinning, `profileId`, `origin`, external reference, and case-aware results | Connector-specific external links and durable history |
+| UI | Generic group/entry/detail/run vocabulary with BDD examples retained in the detail view | Test Type filters and non-BDD detail experiences |
+
+The implemented profile is `bdd-cucumber-simulation` and its connector is `simulation`. It is deliberately deterministic and is not a substitute for the production Ansible or Jenkins integrations described below.
+
+## Target MVP outcome
 
 A user can discover BDD, API, and integration Catalog Entries in one Test Catalog, select compatible entries, explicitly choose `dev` or `qa`, and create a revision-pinned Test Execution. Test Desk resolves the server-managed Execution Profile, dispatches through Ansible or Jenkins, tracks the external run, and presents one common status/result model.
 
@@ -45,13 +58,14 @@ CatalogEntry
   tags
   sourceLocation
   selectionRef          opaque, revision-relative selector
-  executionProfileId
   details               type-specific read-only detail
 ```
 
 `TestGroup` replaces `FeatureDefinition` as the generic grouping model. It retains a `groupKind` and display label so the UI can still say “Feature” for BDD, “Collection” for API, and “Suite” for integration tests.
 
 BDD-only data such as Gherkin steps and Examples remains in typed BDD detail. It must not become nullable fields that every test type pretends to understand. API and integration details initially need only a description, source location, and their source-provided selector; richer schemas can be added after real examples exist.
+
+The Catalog does not expose a connector or profile choice. The server resolves an Execution Profile from the selected entries' type/framework compatibility and the requested Environment.
 
 ### Execution
 
@@ -82,6 +96,7 @@ One execution may contain multiple entries only when all entries resolve to the 
 An Execution Profile is owned by server configuration and binds compatible Catalog Entries to one connector configuration. Examples:
 
 ```text
+bdd-cucumber-simulation -> connector=simulation (implemented)
 bdd-qa-ansible    -> connector=ansible, command template/config reference
 api-ci-jenkins    -> connector=jenkins, controller/job/config reference
 integration-ci    -> connector=jenkins, controller/job/config reference
@@ -91,7 +106,7 @@ The public API never accepts connector type, Jenkins job name, command text, cre
 
 ## Module design
 
-The application-facing module is an `Execution Orchestrator` with a small interface:
+The target application-facing module is an `Execution Orchestrator` with a small interface:
 
 ```text
 start(executionId)
@@ -100,6 +115,8 @@ cancel(executionId)
 ```
 
 It owns profile resolution, connector selection, durable external references, polling/callback reconciliation, status mapping, retry policy, and idempotency. Controllers and catalog code do not know whether Jenkins or Ansible is used.
+
+The current implementation provides `start`/`cancel` and scheduled polling over an in-memory execution store. Durable references, restart recovery, retry policy, and idempotency remain follow-up work.
 
 Inside that module, two real adapters implement the connector seam:
 
@@ -136,7 +153,9 @@ POST /api/v1/executions
 {
   "sourceId": "checkout-tests",
   "entryIds": ["checkout-happy-path"],
-  "environment": "qa"
+  "environment": "qa",
+  "revisionCommit": "a13f9c2",
+  "origin": "rest_api"
 }
 ```
 
@@ -144,15 +163,16 @@ The response adds:
 
 ```json
 {
-  "profileId": "bdd-qa-ansible",
+  "profileId": "bdd-cucumber-simulation",
+  "origin": "rest_api",
   "externalExecution": {
-    "reference": "opaque-reference",
-    "url": "https://runner.example/runs/123"
+    "reference": "simulation:opaque-reference",
+    "url": null
   }
 }
 ```
 
-Catalog responses expose `testType`, `definitionKind`, generic groups, and type-specific detail. Execution results use `entryId`/`entryName` and optional `caseId`/`caseName` instead of Scenario-only names.
+Catalog responses expose `testType`, `definitionKind`, generic groups, and type-specific detail through `GET /api/v1/catalog` and `GET /api/v1/catalog/entries/{entryId}`. Execution results use `entryId`/`entryName`, optional `caseId`, and `caseValues` instead of Scenario-only names.
 
 Because the frontend and backend are released together and the product is pre-1.0, the MVP performs one coordinated contract migration from `scenarioIds` to `entryIds`. A temporary compatibility alias is justified only if an external client is already consuming `/api/v1`; it should not become a permanent dual vocabulary.
 
@@ -176,44 +196,47 @@ Because the frontend and backend are released together and the product is pre-1.
 
 ## Delivery slices
 
-### 1. Generic catalog contract, unchanged behavior
+### 1. Generic catalog contract, unchanged behavior — implemented
 
 - Introduce Catalog Entry, Test Group, Test Type, and Execution Profile concepts.
 - Migrate current BDD sample data and UI to the generic contract.
 - Keep the simulation adapter so behavior can be characterized before external integration.
-- Add contract tests proving revision pinning, explicit Environment, and Failed/Error separation still hold.
+- Add contract tests for catalog shape, revision pinning, explicit Environment, outline expansion, cancellation, and unsupported profiles.
+- Keep dedicated Failed/Error connector contract coverage as follow-up test work.
 
-### 2. Durable Execution Orchestrator
+### 2. Durable Execution Orchestrator — seam implemented, persistence pending
 
 - Replace callback-only `ExecutionRunner` with the orchestrator and connector seam.
 - Persist Test Executions, results, profile ID, and external references.
 - Add idempotent submission and restart reconciliation.
 - Keep a simulation connector for deterministic local and end-to-end tests.
 
-### 3. Ansible BDD vertical slice
+### 3. Ansible BDD vertical slice — pending
 
 - Add one configured Ansible profile and adapter.
 - Dispatch one BDD Scenario/Outline at a pinned commit.
 - Ingest per-Scenario/Example results and support cancellation when the underlying mechanism can do so.
 - Preserve the current BDD detail experience.
 
-### 4. Jenkins non-BDD vertical slice
+### 4. Jenkins non-BDD vertical slice — pending
 
 - Add configured Jenkins profiles.
 - Index at least one API entry and one integration entry from Git.
 - Dispatch both through Jenkins and ingest machine-readable results.
 - Link from Test Desk to the external Jenkins build without exposing credentials.
 
-### 5. Multi-type product polish
+### 5. Multi-type product polish — partially implemented
 
-- Add Test Type filter and type-aware group/detail labels.
-- Show connector-neutral copy in run confirmation and execution detail.
+- Generic group/detail labels and connector-neutral run copy are implemented; complete Test Type filtering and type-aware labels.
+- Keep connector-neutral copy in run confirmation and execution detail as the product grows.
 - Reject mixed-profile selections before confirmation or explain why entries must be run separately.
 - Validate keyboard paths, polling, cancellation, empty states, and actionable infrastructure errors.
 
 Each slice must leave the application runnable and tested; external connectors are introduced only after the generic behavior is covered through the simulation connector.
 
 ## Acceptance criteria
+
+The following remain the target acceptance criteria for the complete MVP. The current repository satisfies the generic contract, server-side profile selection, revision/environment validation, connector-neutral API, and simulation execution portions. Durable execution, real Ansible/Jenkins integrations, non-BDD adapters, restart recovery, idempotency, and the full connector contract matrix remain open.
 
 - The same Catalog can display BDD, API, and integration entries without calling all of them Scenarios.
 - The same Test Type can be rebound to another connector by server configuration without changing the client request shape.
