@@ -8,6 +8,8 @@ The proposed MVP for supporting BDD, API, and integration tests through Ansible 
 
 The contributor seams for catalog adapters, execution connectors, profiles, origins, and normalized results are documented in [docs/architecture/generic-execution.md](docs/architecture/generic-execution.md).
 
+The detailed current architecture is documented in [docs/architecture/testdesk-architecture.md](docs/architecture/testdesk-architecture.md), and the dependency-driven implementation plan is in [docs/roadmap.md](docs/roadmap.md).
+
 ## Requirements
 
 - Java 17+
