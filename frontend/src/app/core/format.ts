@@ -1,7 +1,7 @@
 import {
   ExecutionStatus,
-  ScenarioExecutionStatus,
-  ScenarioKind,
+  DefinitionKind,
+  TestResultStatus,
   SourceSyncStatus,
 } from './models';
 
@@ -66,7 +66,7 @@ export function formatRelative(iso: string | null | undefined, now = Date.now())
 }
 
 export function statusLabel(
-  status: ExecutionStatus | ScenarioExecutionStatus | SourceSyncStatus | null | undefined,
+  status: ExecutionStatus | TestResultStatus | SourceSyncStatus | null | undefined,
 ): string {
   if (status == null) {
     return 'Never run';
@@ -95,8 +95,17 @@ export function statusLabel(
   }
 }
 
-export function kindLabel(kind: ScenarioKind): string {
-  return kind === 'SCENARIO_OUTLINE' ? 'Outline' : 'Scenario';
+export function kindLabel(kind: DefinitionKind): string {
+  switch (kind) {
+    case 'SCENARIO_OUTLINE':
+      return 'Outline';
+    case 'SCENARIO':
+      return 'Scenario';
+    case 'TEST':
+      return 'Test';
+    case 'SUITE':
+      return 'Suite';
+  }
 }
 
 export function isActiveStatus(status: ExecutionStatus | null | undefined): boolean {

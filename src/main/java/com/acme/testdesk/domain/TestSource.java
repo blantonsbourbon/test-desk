@@ -1,0 +1,99 @@
+package com.acme.testdesk.domain;
+
+import java.time.Instant;
+
+public final class TestSource {
+    private final String id;
+    private final String name;
+    private final String repository;
+    private final String defaultBranch;
+    private final String catalogAdapterId;
+    private volatile CatalogRevision latestRevision;
+    private volatile SourceSyncStatus syncStatus;
+    private volatile String syncError;
+
+    public TestSource(
+            String id,
+            String name,
+            String repository,
+            String defaultBranch,
+            CatalogRevision latestRevision,
+            SourceSyncStatus syncStatus
+    ) {
+        this(id, name, repository, defaultBranch, "bdd-simulation", latestRevision, syncStatus);
+    }
+
+    public TestSource(
+            String id,
+            String name,
+            String repository,
+            String defaultBranch,
+            String catalogAdapterId,
+            CatalogRevision latestRevision,
+            SourceSyncStatus syncStatus
+    ) {
+        this.id = id;
+        this.name = name;
+        this.repository = repository;
+        this.defaultBranch = defaultBranch;
+        this.catalogAdapterId = catalogAdapterId;
+        this.latestRevision = latestRevision;
+        this.syncStatus = syncStatus;
+    }
+
+    public String id() {
+        return id;
+    }
+
+    public String name() {
+        return name;
+    }
+
+    public String repository() {
+        return repository;
+    }
+
+    public String defaultBranch() {
+        return defaultBranch;
+    }
+
+    public String catalogAdapterId() {
+        return catalogAdapterId;
+    }
+
+    public CatalogRevision latestRevision() {
+        return latestRevision;
+    }
+
+    public SourceSyncStatus syncStatus() {
+        return syncStatus;
+    }
+
+    public String syncError() {
+        return syncError;
+    }
+
+    public synchronized boolean tryMarkSyncing() {
+        if (syncStatus == SourceSyncStatus.SYNCING) {
+            return false;
+        }
+        syncStatus = SourceSyncStatus.SYNCING;
+        syncError = null;
+        return true;
+    }
+
+    public synchronized void markSynced(String commit) {
+        markSynced(new CatalogRevision(commit, defaultBranch, Instant.now()));
+    }
+
+    public synchronized void markSynced(CatalogRevision revision) {
+        latestRevision = revision;
+        syncStatus = SourceSyncStatus.SYNCED;
+        syncError = null;
+    }
+
+    public synchronized void markSyncError(String message) {
+        syncStatus = SourceSyncStatus.ERROR;
+        syncError = message;
+    }
+}

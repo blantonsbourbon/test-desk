@@ -7,11 +7,11 @@ import {
   kindLabel,
   shortSha,
 } from '../../core/format';
-import { ScenarioDetails } from '../../core/models';
+import { CatalogEntryDetails } from '../../core/models';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
 
 @Component({
-  selector: 'app-scenario-detail-panel',
+  selector: 'app-catalog-entry-detail-panel',
   standalone: true,
   imports: [StatusBadgeComponent, RouterLink],
   template: `
@@ -20,13 +20,13 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
       class="drawer"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="scenario-detail-title"
+        aria-labelledby="catalog-entry-detail-title"
     >
       <header class="drawer__header">
         <div>
-          <div class="muted small drawer__eyebrow">Scenario detail</div>
-          <h2 id="scenario-detail-title">
-            {{ detail?.name || (loading ? 'Loading…' : 'Scenario') }}
+          <div class="muted small drawer__eyebrow">Catalog Entry detail</div>
+          <h2 id="catalog-entry-detail-title">
+            {{ detail?.name || (loading ? 'Loading…' : 'Catalog Entry') }}
           </h2>
         </div>
         <button type="button" class="icon-btn" aria-label="Close detail panel" (click)="closed.emit()">
@@ -43,18 +43,22 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
 
       <div class="drawer__body">
         @if (loading) {
-          <p class="muted">Loading scenario details…</p>
+          <p class="muted">Loading entry details…</p>
         } @else if (error) {
           <div class="error-banner" role="alert">{{ error }}</div>
         } @else if (detail) {
           <dl class="meta-grid">
             <div>
-              <dt>Feature</dt>
-              <dd>{{ detail.featureName }}</dd>
+              <dt>Group</dt>
+              <dd>{{ detail.groupName }}</dd>
             </div>
             <div>
-              <dt>Type</dt>
-              <dd>{{ kindLabel(detail.kind) }}</dd>
+              <dt>Definition</dt>
+              <dd>{{ kindLabel(detail.definitionKind) }}</dd>
+            </div>
+            <div>
+              <dt>Test type</dt>
+              <dd>{{ detail.testType }} · {{ detail.framework }}</dd>
             </div>
             <div class="meta-grid__full">
               <dt>Source</dt>
@@ -100,7 +104,7 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
                 </div>
               </div>
             } @else {
-              <p class="muted empty-hint">This scenario has never been run.</p>
+              <p class="muted empty-hint">This entry has never been run.</p>
             }
           </section>
 
@@ -136,7 +140,7 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
           <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M5 3.5v9l8-4.5-8-4.5z" fill="currentColor" />
           </svg>
-          Run scenario
+          Run entry
         </button>
       </footer>
     </aside>
@@ -363,8 +367,8 @@ import { StatusBadgeComponent } from '../../shared/status-badge.component';
     `,
   ],
 })
-export class ScenarioDetailPanelComponent {
-  @Input() detail: ScenarioDetails | null = null;
+export class CatalogEntryDetailPanelComponent {
+  @Input() detail: CatalogEntryDetails | null = null;
   @Input() loading = false;
   @Input() error: string | null = null;
 

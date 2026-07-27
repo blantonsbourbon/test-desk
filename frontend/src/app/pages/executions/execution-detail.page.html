@@ -22,7 +22,7 @@
         </div>
         @if (execution) {
           <p class="subtitle">
-            {{ execution.results.length }} scenario result(s) ·
+            {{ execution.results.length }} entry result(s) ·
             env <span class="mono">{{ execution.environment }}</span> ·
             commit <span class="mono">{{ shortSha(execution.revision.commit) }}</span>
           </p>
@@ -85,8 +85,12 @@
         <div class="mono value">{{ execution.sourceId }}</div>
       </div>
       <div class="summary__item">
-        <div class="label">Scenarios</div>
+        <div class="label">Entries</div>
         <div class="value">{{ execution.results.length }}</div>
+      </div>
+      <div class="summary__item">
+        <div class="label">Profile</div>
+        <div class="mono value">{{ execution.profileId }}</div>
       </div>
       <div class="summary__item">
         <div class="label">Requested by</div>
@@ -112,13 +116,13 @@
 
     <section class="results panel">
       <header class="results__header">
-        <h2>Scenario results</h2>
+        <h2>Entry results</h2>
         <span class="results__count muted small">{{ execution.results.length }} rows</span>
       </header>
 
       <div class="results-table" role="table">
         <div class="results-table__head" role="row">
-          <div role="columnheader">Scenario</div>
+          <div role="columnheader">Entry</div>
           <div role="columnheader">Status</div>
           <div role="columnheader">Duration</div>
           <div role="columnheader">Error</div>
@@ -131,11 +135,11 @@
             [class.row-rail--passed]="result.status === 'PASSED'"
           >
             <div role="cell">
-              <div class="result-name">{{ result.scenarioName }}</div>
-              @if (exampleLabel(result.exampleValues)) {
-                <div class="mono muted small">{{ exampleLabel(result.exampleValues) }}</div>
+              <div class="result-name">{{ result.entryName }}</div>
+              @if (exampleLabel(result.caseValues)) {
+                <div class="mono muted small">{{ exampleLabel(result.caseValues) }}</div>
               }
-              <div class="mono muted small result-id">{{ result.scenarioId }}</div>
+              <div class="mono muted small result-id">{{ result.entryId }}</div>
             </div>
             <div role="cell"><app-status-badge [status]="result.status" /></div>
             <div role="cell" class="mono">{{ formatDuration(result.durationMs) }}</div>

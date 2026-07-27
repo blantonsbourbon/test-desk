@@ -4,6 +4,16 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription, interval, switchMap, takeWhile } from 'rxjs';
 import { ApiClientError, ApiService } from '../../core/api.service';
 import {
+  CatalogEntryDetails,
+  CatalogEntrySummary,
+  CatalogResponse,
+  CatalogStatusFilter,
+  EnvironmentName,
+  RunSelection,
+  Source,
+  TestGroup,
+} from '../../core/models';
+import {
   formatAbsolute,
   formatDuration,
   formatRelative,
@@ -11,30 +21,15 @@ import {
   passRateLabel,
   shortSha,
 } from '../../core/format';
-import {
-  CatalogResponse,
-  CatalogStatusFilter,
-  EnvironmentName,
-  Feature,
-  RunSelection,
-  ScenarioDetails,
-  ScenarioSummary,
-  Source,
-} from '../../core/models';
 import { ToastService } from '../../core/toast.service';
 import { RunDialogComponent } from '../../shared/run-dialog.component';
 import { StatusBadgeComponent } from '../../shared/status-badge.component';
-import { ScenarioDetailPanelComponent } from './scenario-detail-panel.component';
+import { CatalogEntryDetailPanelComponent } from './scenario-detail-panel.component';
 
 @Component({
   selector: 'app-catalog-page',
   standalone: true,
-  imports: [
-    FormsModule,
-    StatusBadgeComponent,
-    RunDialogComponent,
-    ScenarioDetailPanelComponent,
-  ],
+  imports: [FormsModule, StatusBadgeComponent, RunDialogComponent, CatalogEntryDetailPanelComponent],
   templateUrl: './catalog.page.html',
   styleUrl: './catalog.page.scss',
 })
@@ -51,10 +46,10 @@ export class CatalogPage implements OnInit, OnDestroy {
   query = '';
   statusFilter: CatalogStatusFilter = '';
   selectedTags: string[] = [];
-  collapsedFeatures = new Set<string>();
-  selectedScenarioIds = new Set<string>();
+  collapsedGroups = new Set<string>();
+  selectedEntryIds = new Set<string>();
 
-  detail: ScenarioDetails | null = null;
+  detail: CatalogEntryDetails | null = null;
   detailLoading = false;
   detailError: string | null = null;
 
@@ -71,6 +66,7 @@ export class CatalogPage implements OnInit, OnDestroy {
   private syncPollSub: Subscription | null = null;
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
   private loadSeq = 0;
+  private detailSeq = 0;
 
   readonly kindLabel = kindLabel;
   readonly shortSha = shortSha;
@@ -95,12 +91,12 @@ export class CatalogPage implements OnInit, OnDestroy {
       return [];
     }
     const tags = new Set<string>();
-    for (const feature of this.catalog.features) {
-      for (const tag of feature.tags) {
+    for (const group of this.catalog.groups) {
+      for (const tag of group.tags) {
         tags.add(tag);
       }
-      for (const scenario of feature.scenarios) {
-        for (const tag of scenario.tags) {
+      for (const entry of group.entries) {
+        for (const tag of entry.tags) {
           tags.add(tag);
         }
       }
@@ -113,11 +109,11 @@ export class CatalogPage implements OnInit, OnDestroy {
   }
 
   get selectedCount(): number {
-    return this.selectedScenarioIds.size;
+    return this.selectedEntryIds.size;
   }
 
   get emptyBecauseFilters(): boolean {
-    return !!this.catalog && this.catalog.features.length === 0 && this.hasFilters;
+    return !!this.catalog && this.catalog.groups.length === 0 && this.hasFilters;
   }
 
   bootstrap(): void {
@@ -127,7 +123,7 @@ export class CatalogPage implements OnInit, OnDestroy {
     this.api.listSources().subscribe({
       next: (res) => {
         this.sources = res.items;
-        if (preferredSourceId && res.items.some((s) => s.id === preferredSourceId)) {
+        if (preferredSourceId && res.items.some((source) => source.id === preferredSourceId)) {
           this.selectedSourceId = preferredSourceId;
         } else if (!this.selectedSourceId && res.items.length) {
           this.selectedSourceId = res.items[0].id;
@@ -147,7 +143,8 @@ export class CatalogPage implements OnInit, OnDestroy {
   }
 
   onSourceChange(): void {
-    this.selectedScenarioIds.clear();
+    this.syncPollSub?.unsubscribe();
+    this.selectedEntryIds.clear();
     this.detail = null;
     this.clearFilters(false);
     this.loadCatalog();
@@ -166,7 +163,7 @@ export class CatalogPage implements OnInit, OnDestroy {
 
   toggleTag(tag: string): void {
     if (this.selectedTags.includes(tag)) {
-      this.selectedTags = this.selectedTags.filter((t) => t !== tag);
+      this.selectedTags = this.selectedTags.filter((value) => value !== tag);
     } else {
       this.selectedTags = [...this.selectedTags, tag];
     }
@@ -202,13 +199,10 @@ export class CatalogPage implements OnInit, OnDestroy {
           }
           this.catalog = catalog;
           this.loading = false;
-          // Drop selections that no longer appear in the filtered list
-          const visible = new Set(
-            catalog.features.flatMap((f) => f.scenarios.map((s) => s.id)),
-          );
-          for (const id of [...this.selectedScenarioIds]) {
+          const visible = new Set(catalog.groups.flatMap((group) => group.entries.map((entry) => entry.id)));
+          for (const id of [...this.selectedEntryIds]) {
             if (!visible.has(id)) {
-              this.selectedScenarioIds.delete(id);
+              this.selectedEntryIds.delete(id);
             }
           }
         },
@@ -272,46 +266,53 @@ export class CatalogPage implements OnInit, OnDestroy {
   }
 
   private patchSource(source: Source): void {
-    this.sources = this.sources.map((s) => (s.id === source.id ? source : s));
+    this.sources = this.sources.map((item) => (item.id === source.id ? source : item));
     if (this.catalog && this.catalog.source.id === source.id) {
       this.catalog = { ...this.catalog, source };
     }
   }
 
-  toggleFeature(featureId: string): void {
-    if (this.collapsedFeatures.has(featureId)) {
-      this.collapsedFeatures.delete(featureId);
+  toggleGroup(groupId: string): void {
+    if (this.collapsedGroups.has(groupId)) {
+      this.collapsedGroups.delete(groupId);
     } else {
-      this.collapsedFeatures.add(featureId);
+      this.collapsedGroups.add(groupId);
     }
   }
 
-  isCollapsed(featureId: string): boolean {
-    return this.collapsedFeatures.has(featureId);
+  isCollapsed(groupId: string): boolean {
+    return this.collapsedGroups.has(groupId);
   }
 
-  toggleScenario(id: string, checked: boolean): void {
+  toggleEntry(id: string, checked: boolean): void {
     if (checked) {
-      this.selectedScenarioIds.add(id);
+      this.selectedEntryIds.add(id);
     } else {
-      this.selectedScenarioIds.delete(id);
+      this.selectedEntryIds.delete(id);
     }
   }
 
   isSelected(id: string): boolean {
-    return this.selectedScenarioIds.has(id);
+    return this.selectedEntryIds.has(id);
   }
 
-  openDetail(scenario: ScenarioSummary): void {
+  openDetail(entry: CatalogEntrySummary): void {
+    const seq = ++this.detailSeq;
     this.detailLoading = true;
     this.detailError = null;
     this.detail = null;
-    this.api.getScenario(scenario.id).subscribe({
+    this.api.getEntry(entry.id).subscribe({
       next: (details) => {
+        if (seq !== this.detailSeq) {
+          return;
+        }
         this.detail = details;
         this.detailLoading = false;
       },
       error: (err: unknown) => {
+        if (seq !== this.detailSeq) {
+          return;
+        }
         this.detailLoading = false;
         this.detailError = this.messageOf(err);
       },
@@ -319,77 +320,54 @@ export class CatalogPage implements OnInit, OnDestroy {
   }
 
   closeDetail(): void {
+    this.detailSeq++;
     this.detail = null;
     this.detailError = null;
     this.detailLoading = false;
   }
 
-  openRunForFeature(feature: Feature, event: Event): void {
+  openRunForGroup(group: TestGroup, event: Event): void {
     event.stopPropagation();
-    if (!this.catalog) {
-      return;
-    }
-    this.openRun(
-      feature.scenarios.map((s) => ({
-        id: s.id,
-        name: s.name,
-        featureName: feature.name,
-      })),
-    );
+    this.openRun(group.entries.map((entry) => ({ id: entry.id, name: entry.name, groupName: group.name })));
   }
 
-  openRunForScenario(scenario: ScenarioSummary, feature: Feature, event?: Event): void {
+  openRunForEntry(entry: CatalogEntrySummary, group: TestGroup, event?: Event): void {
     event?.stopPropagation();
-    this.openRun([
-      {
-        id: scenario.id,
-        name: scenario.name,
-        featureName: feature.name,
-      },
-    ]);
+    this.openRun([{ id: entry.id, name: entry.name, groupName: group.name }]);
   }
 
   openRunSelected(): void {
-    if (!this.catalog || this.selectedScenarioIds.size === 0) {
+    if (!this.catalog || this.selectedEntryIds.size === 0) {
       return;
     }
-    const scenarios: RunSelection['scenarios'] = [];
-    for (const feature of this.catalog.features) {
-      for (const scenario of feature.scenarios) {
-        if (this.selectedScenarioIds.has(scenario.id)) {
-          scenarios.push({
-            id: scenario.id,
-            name: scenario.name,
-            featureName: feature.name,
-          });
+    const entries: RunSelection['entries'] = [];
+    for (const group of this.catalog.groups) {
+      for (const entry of group.entries) {
+        if (this.selectedEntryIds.has(entry.id)) {
+          entries.push({ id: entry.id, name: entry.name, groupName: group.name });
         }
       }
     }
-    this.openRun(scenarios);
+    this.openRun(entries);
   }
 
   openRunFromDetail(): void {
-    if (!this.detail || !this.catalog) {
+    if (!this.detail) {
       return;
     }
-    this.openRun([
-      {
-        id: this.detail.id,
-        name: this.detail.name,
-        featureName: this.detail.featureName,
-      },
-    ]);
+    this.openRun([{ id: this.detail.id, name: this.detail.name, groupName: this.detail.groupName }]);
   }
 
-  private openRun(scenarios: RunSelection['scenarios']): void {
-    if (!this.catalog) {
+  private openRun(entries: RunSelection['entries']): void {
+    if (!this.catalog || !this.catalog.revision) {
+      this.runError = 'This catalog has no available revision to execute.';
       return;
     }
     this.runSelection = {
       sourceId: this.catalog.source.id,
       sourceName: this.catalog.source.name,
       revision: this.catalog.revision,
-      scenarios,
+      entries,
     };
     this.runError = null;
     this.runSubmitting = false;
@@ -413,8 +391,10 @@ export class CatalogPage implements OnInit, OnDestroy {
     this.api
       .createExecution({
         sourceId: this.runSelection.sourceId,
-        scenarioIds: this.runSelection.scenarios.map((s) => s.id),
+        entryIds: this.runSelection.entries.map((entry) => entry.id),
         environment,
+        revisionCommit: this.runSelection.revision.commit,
+        origin: 'ui',
       })
       .subscribe({
         next: (execution) => {

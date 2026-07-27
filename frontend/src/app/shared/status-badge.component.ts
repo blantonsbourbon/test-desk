@@ -1,12 +1,12 @@
 import { Component, Input } from '@angular/core';
 import {
   ExecutionStatus,
-  ScenarioExecutionStatus,
   SourceSyncStatus,
+  TestResultStatus,
 } from '../core/models';
 import { statusLabel } from '../core/format';
 
-type BadgeStatus = ExecutionStatus | ScenarioExecutionStatus | SourceSyncStatus | null | undefined;
+type BadgeStatus = ExecutionStatus | TestResultStatus | SourceSyncStatus | null | undefined;
 
 @Component({
   selector: 'app-status-badge',

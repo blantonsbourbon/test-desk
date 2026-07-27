@@ -1,23 +1,25 @@
 # Test Desk
 
-Spring Boot 3 backend and Angular 19 console for the internal BDD Test Catalog and execution console.
+Spring Boot 3 backend and Angular 19 console for an internal, generic Test Catalog and execution console.
 
 The frontend design is documented in [docs/frontend-design.md](docs/frontend-design.md). It includes the screen behavior and the `/api/v1` contract that the backend implements.
 
 The proposed MVP for supporting BDD, API, and integration tests through Ansible and Jenkins is documented in [docs/mvp-multi-test-execution.md](docs/mvp-multi-test-execution.md).
 
+The contributor seams for catalog adapters, execution connectors, profiles, origins, and normalized results are documented in [docs/architecture/generic-execution.md](docs/architecture/generic-execution.md).
+
 ## Requirements
 
 - Java 17+
-- Maven 3.6.3+
+- Gradle 8.14+ (or the checked-in Gradle wrapper)
 - Node.js 20+ (frontend)
 
-The Maven build compiles with `--release 17`. Spring Boot is pinned to `3.5.16`.
+The Gradle build compiles with `--release 17` and enables Java parameter metadata for Spring MVC binding. Spring Boot is pinned to `3.5.16`.
 
 ## Run backend
 
 ```bash
-mvn spring-boot:run
+./gradlew bootRun
 ```
 
 The API listens on `http://localhost:8080`.
@@ -37,21 +39,22 @@ CORS allows `http://localhost:4200` (plus 3000/5173). Alternatively set `apiBase
 ## Verify
 
 ```bash
-mvn test
+./gradlew test
 curl http://localhost:8080/api/v1/sources
 curl 'http://localhost:8080/api/v1/catalog?sourceId=checkout-web'
 curl -X POST http://localhost:8080/api/v1/executions \
   -H 'Content-Type: application/json' \
-  -d '{"sourceId":"checkout-web","scenarioIds":["checkout-valid-card"],"environment":"qa"}'
+  -d '{"sourceId":"checkout-web","entryIds":["checkout-valid-card"],"environment":"qa","revisionCommit":"a13f9c2","origin":"rest_api"}'
 ```
 
 ## Backend boundary
 
-The application currently uses an in-memory catalog and `SimulationExecutionRunner` so the complete API flow can be exercised without external infrastructure. `ExecutionRunner` is the integration port for the real Ansible/Windows runner; replacing the simulation adapter is intentionally isolated from the REST controllers and domain model.
+The application currently uses an in-memory catalog and simulation connector so the complete API flow can be exercised without external infrastructure. BDD data is supplied by `BddSimulationCatalogAdapter`; a real Git/framework adapter can replace it without changing the catalog API. `ExecutionOrchestrator` resolves a server-managed `ExecutionProfile` and talks to an `ExecutionConnector`, keeping external dispatch details out of REST controllers and the generic domain model.
 
 The next production seams are:
 
 1. Replace the in-memory catalog with a Git synchronizer and durable read model.
-2. Implement `ExecutionRunner` with an Ansible client that submits a pinned commit, environment, and scenario IDs to the Windows worker.
-3. Persist executions and runner callbacks so queued/running history survives restarts.
-4. Add authentication and authorization around source/environment access.
+2. Add framework-specific catalog adapters and a non-BDD vertical slice.
+3. Add Ansible/Jenkins connectors that submit a pinned commit, environment, and opaque selection references.
+4. Persist executions, external references, results, and connector observations so queued/running history survives restarts.
+5. Add authentication and authorization around source/environment access.

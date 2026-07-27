@@ -75,7 +75,7 @@
             </div>
             <div>
               <dt>Catalog</dt>
-              <dd>{{ source.featureCount }} features · {{ source.scenarioCount }} scenarios</dd>
+              <dd>{{ source.groupCount }} groups · {{ source.entryCount }} entries</dd>
             </div>
           </dl>
           @if (source.syncError) {
@@ -133,7 +133,7 @@
           </div>
           <div>
             <dt>Catalog size</dt>
-            <dd>{{ selected.featureCount }} features · {{ selected.scenarioCount }} scenarios</dd>
+            <dd>{{ selected.groupCount }} groups · {{ selected.entryCount }} entries</dd>
           </div>
         </dl>
         @if (selected.syncError) {

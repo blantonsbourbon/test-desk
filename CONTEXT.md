@@ -28,6 +28,10 @@ _Avoid_: Scenario when referring to all test types, editable test
 The behavioral form of a Test Definition, initially `BDD`, `API`, or `Integration`. Test Type does not determine how the test is dispatched.
 _Avoid_: Runner type, trigger type, connector
 
+**Test Framework**:
+The concrete library or protocol used to describe and interpret a Test Definition, such as Cucumber for BDD or Postman for API tests. It helps choose a Catalog adapter and Execution Profile, but is not itself a trigger mechanism.
+_Avoid_: Test Type, connector, execution environment
+
 **Test Group**:
 A named collection of related Catalog Entries. A BDD Feature is one kind of Test Group; other test types may use suites or collections.
 _Avoid_: Execution, pipeline, runner group
@@ -59,6 +63,10 @@ _Avoid_: User preset, Jenkins job, runner exposed to the UI
 **Execution Connector**:
 The integration that dispatches a Test Execution to an external execution system and observes or cancels it, such as an Ansible or Jenkins connector.
 _Avoid_: Test Type, Test Source, trigger
+
+**Execution Origin**:
+The controlled channel that requested a Test Execution, initially `UI`, `REST_API`, `SCHEDULE`, or `WEBHOOK`. It is audit metadata, not a connector choice.
+_Avoid_: trigger command, external execution reference
 
 **External Execution**:
 The corresponding run created in an external execution system for a Test Execution, identified by an opaque external reference.

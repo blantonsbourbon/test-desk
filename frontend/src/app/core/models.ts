@@ -1,5 +1,7 @@
 export type EnvironmentName = 'dev' | 'qa';
 
+export type ExecutionOrigin = 'ui' | 'rest_api' | 'schedule' | 'webhook';
+
 export type ExecutionStatus =
   | 'QUEUED'
   | 'RUNNING'
@@ -8,15 +10,15 @@ export type ExecutionStatus =
   | 'ERROR'
   | 'CANCELLED';
 
-export type ScenarioExecutionStatus =
-  | ExecutionStatus
-  | 'SKIPPED'
-  | null;
+export type TestResultStatus = ExecutionStatus | 'SKIPPED' | null;
+
+/** @deprecated Use TestResultStatus. Kept for shared badge compatibility during migration. */
+export type ScenarioExecutionStatus = TestResultStatus;
 
 export type SourceSyncStatus = 'SYNCED' | 'SYNCING' | 'ERROR';
-
-export type ScenarioKind = 'SCENARIO' | 'SCENARIO_OUTLINE';
-
+export type TestType = 'BDD' | 'API' | 'INTEGRATION';
+export type DefinitionKind = 'SCENARIO' | 'SCENARIO_OUTLINE' | 'TEST' | 'SUITE';
+export type TestGroupKind = 'FEATURE' | 'COLLECTION' | 'SUITE';
 export type CatalogStatusFilter = '' | 'PASSED' | 'FAILED' | 'NEVER_RUN';
 
 export interface Revision {
@@ -33,39 +35,42 @@ export interface Source {
   latestRevision: Revision | null;
   syncStatus: SourceSyncStatus;
   syncError: string | null;
-  featureCount: number;
-  scenarioCount: number;
+  groupCount: number;
+  entryCount: number;
 }
 
 export interface SourceListResponse {
   items: Source[];
 }
 
-export interface ScenarioSummary {
+export interface CatalogEntrySummary {
   id: string;
   name: string;
-  kind: ScenarioKind;
+  testType: TestType;
+  framework: string;
+  definitionKind: DefinitionKind;
   tags: string[];
   sourcePath: string;
   line: number;
-  exampleCount: number;
-  status: ScenarioExecutionStatus;
+  caseCount: number;
+  status: TestResultStatus;
   durationMs: number | null;
   lastRunAt: string | null;
 }
 
-export interface Feature {
+export interface TestGroup {
   id: string;
   name: string;
+  kind: TestGroupKind;
   tags: string[];
   sourcePath: string;
-  scenarioCount: number;
-  scenarios: ScenarioSummary[];
+  entryCount: number;
+  entries: CatalogEntrySummary[];
 }
 
 export interface CatalogStats {
-  featureCount: number;
-  scenarioCount: number;
+  groupCount: number;
+  entryCount: number;
   passedCount: number;
   failedCount: number;
   passRate: number | null;
@@ -73,12 +78,12 @@ export interface CatalogStats {
 
 export interface CatalogResponse {
   source: Source;
-  revision: Revision;
-  features: Feature[];
+  revision: Revision | null;
+  groups: TestGroup[];
   stats: CatalogStats;
 }
 
-export interface ScenarioStep {
+export interface TestStep {
   keyword: string;
   text: string;
 }
@@ -88,35 +93,45 @@ export interface ExecutionSummary {
   environment: EnvironmentName;
   status: ExecutionStatus;
   revision: Revision;
+  profileId: string;
   requestedAt: string;
   startedAt: string | null;
   completedAt: string | null;
   durationMs: number;
 }
 
-export interface ScenarioDetails {
+export interface CatalogEntryDetails {
   id: string;
-  featureId: string;
-  featureName: string;
+  sourceId: string;
+  groupId: string;
+  groupName: string;
   name: string;
-  kind: ScenarioKind;
+  testType: TestType;
+  framework: string;
+  definitionKind: DefinitionKind;
   tags: string[];
   sourcePath: string;
   line: number;
-  steps: ScenarioStep[];
+  steps: TestStep[];
   examples: Record<string, string>[];
-  status: ScenarioExecutionStatus;
+  status: TestResultStatus;
   durationMs: number | null;
   lastRunAt: string | null;
   recentExecutions: ExecutionSummary[];
 }
 
-export interface ScenarioExecutionResult {
+export interface ExternalExecution {
+  reference: string;
+  url: string | null;
+}
+
+export interface ExecutionEntryResult {
   resultId: string;
-  scenarioId: string;
-  scenarioName: string;
-  exampleValues: Record<string, string> | null;
-  status: ScenarioExecutionStatus;
+  entryId: string;
+  entryName: string;
+  caseId: string | null;
+  caseValues: Record<string, string>;
+  status: TestResultStatus;
   durationMs: number;
   errorMessage: string | null;
 }
@@ -125,6 +140,9 @@ export interface Execution {
   id: string;
   sourceId: string;
   revision: Revision;
+  profileId: string;
+  origin: ExecutionOrigin;
+  externalExecution: ExternalExecution | null;
   environment: EnvironmentName;
   status: ExecutionStatus;
   requestedBy: string;
@@ -133,7 +151,7 @@ export interface Execution {
   completedAt: string | null;
   durationMs: number;
   errorMessage: string | null;
-  results: ScenarioExecutionResult[];
+  results: ExecutionEntryResult[];
 }
 
 export interface ExecutionListResponse {
@@ -142,8 +160,10 @@ export interface ExecutionListResponse {
 
 export interface CreateExecutionRequest {
   sourceId: string;
-  scenarioIds: string[];
+  entryIds: string[];
   environment: EnvironmentName;
+  revisionCommit: string;
+  origin: ExecutionOrigin;
 }
 
 export interface ApiError {
@@ -154,7 +174,7 @@ export interface ApiError {
 
 export interface RunSelection {
   sourceId: string;
-  scenarios: Array<{ id: string; name: string; featureName?: string }>;
+  entries: Array<{ id: string; name: string; groupName?: string }>;
   revision: Revision;
   sourceName: string;
 }

@@ -11,7 +11,7 @@ import {
   Execution,
   ExecutionListResponse,
   ExecutionStatus,
-  ScenarioDetails,
+  CatalogEntryDetails,
   Source,
   SourceListResponse,
 } from './models';
@@ -69,11 +69,11 @@ export class ApiService {
       .pipe(catchError((err) => this.handleError(err)));
   }
 
-  getScenario(scenarioId: string, limit = 5): Observable<ScenarioDetails> {
+  getEntry(entryId: string, limit = 5): Observable<CatalogEntryDetails> {
     const params = new HttpParams().set('limit', String(limit));
     return this.http
-      .get<ScenarioDetails>(
-        `${this.baseUrl}/catalog/scenarios/${encodeURIComponent(scenarioId)}`,
+      .get<CatalogEntryDetails>(
+        `${this.baseUrl}/catalog/entries/${encodeURIComponent(entryId)}`,
         { params },
       )
       .pipe(catchError((err) => this.handleError(err)));

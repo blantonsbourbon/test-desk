@@ -2,7 +2,7 @@
 
 ## 目标
 
-首版前端是 Git BDD 测试定义的 **Test Catalog** 与 **Test Execution** 控制台：团队可以发现测试、查看步骤和最近结果、选择 `dev` 或 `qa` 环境发起执行，并观察执行状态。
+首版前端是 Git 测试定义的 **Test Catalog** 与 **Test Execution** 控制台：团队可以发现不同类型的测试条目、查看类型专属详情和最近结果、选择 `dev` 或 `qa` 环境发起执行，并观察执行状态。当前样例数据是 BDD，页面和 API 使用 generic Catalog Entry contract。
 
 前端不编辑 `.feature` 文件，不维护测试定义副本，也不暴露 Windows Server、Ansible、Playwright 等执行基础设施细节。
 
@@ -10,9 +10,9 @@
 
 - Git 中的 `.feature` 文件是 Test Source 的唯一事实来源。
 - Test Catalog 是 Test Source 的只读视图。
-- `Feature` 是相关 BDD Scenario 的分组，可以整体执行，但不是单条测试。
-- `Scenario` 是最小的可发现、可独立执行的测试定义。
-- `Scenario Outline` 在目录中显示为一条定义，Examples 在结果中展开。
+- `TestGroup` 是相关 Catalog Entry 的分组；BDD Feature、API Collection、Integration Suite 都是具体分组类型。
+- `Catalog Entry` 是最小的可发现、可独立执行的测试定义。
+- BDD Scenario Outline 在目录中显示为一条 Entry，Examples 在结果中展开。
 - Test Execution 固定到一个 Catalog Revision（Git commit）。
 - 环境只有 `dev` 和 `qa`，每次执行必须明确选择其一；不得隐式选择环境。
 - 执行状态为 `Queued`、`Running`、`Passed`、`Failed`、`Error`、`Cancelled`。
@@ -22,7 +22,7 @@
 
 应用使用左侧导航和主内容区：
 
-1. **Catalog**：默认首页，按 Feature 浏览 Scenario。
+1. **Catalog**：默认首页，按 Test Group 浏览 Catalog Entry。
 2. **Executions**：执行历史和当前运行中的执行。
 3. **Sources**：查看已接入的 Git Test Source、分支、最近同步 commit 和同步状态。
 
@@ -33,48 +33,48 @@
 ### 顶部区域
 
 - 面包屑：`Catalog / {source name}`。
-- 页面标题：`BDD test catalog`。
+- 页面标题：`Test catalog`。
 - 副标题：说明当前目录来自哪个 Git source，以及当前 commit 的短 SHA。
 - 主操作：`Sync source`。点击后进入 `Syncing` 状态，完成后刷新目录；同步失败要展示可读错误。
 - 辅助信息：`Last synced {relative time}`、`{short sha}`。
 
 ### 统计卡片
 
-展示 source 级别的摘要：Scenario 总数、Feature 总数、最近 24 小时通过率、最近一次同步时间。统计卡片是摘要，不代替筛选结果。
+展示 source 级别的摘要：Catalog Entry 总数、Test Group 总数、最近 24 小时通过率、最近一次同步时间。统计卡片是摘要，不代替筛选结果。
 
 ### 工具栏
 
-- 搜索框：按 Scenario 名称、Feature 名称、路径和标签搜索，输入后实时过滤。
+- 搜索框：按 Entry 名称、Group 名称、framework、路径和标签搜索，输入后实时过滤。
 - 状态筛选：`All`、`Passed`、`Failed`、`Never run`。
 - 标签筛选：从当前 source 的标签集合中选择，可多选。
 - 清除筛选按钮：只有存在筛选条件时显示。
-- 执行选择按钮：勾选 Scenario 后显示，文案包含选择数量，例如 `Run 3 selected`。
+- 执行选择按钮：勾选 Catalog Entry 后显示，文案包含选择数量，例如 `Run 3 selected`。
 
 ### 目录列表
 
-以 Feature 分组的可折叠列表展示：
+以 Test Group 分组的可折叠列表展示：
 
-- Feature 名称、标签、`.feature` 路径和该组 Scenario 数量。
-- Feature 级 `Run` 操作，执行组内全部 Scenario。
-- 每条 Scenario 显示复选框、名称、Scenario/Outline 类型、标签、最近一次结果、耗时和最近运行时间。
+- Group 名称、标签、源路径和该组 Entry 数量。
+- Group 级 `Run` 操作，执行组内全部 Entry。
+- 每条 Entry 显示复选框、名称、Test Type/Definition Kind、framework、标签、最近一次结果、耗时和最近运行时间。
 - 行点击打开右侧详情面板；行内 Run 图标直接打开执行确认面板。
 - Failed 使用珊瑚色，Passed 使用青绿色，Never run 使用中性灰；颜色不能是唯一状态线索，必须同时有文字或图标。
 
-### Scenario 详情面板
+### Catalog Entry 详情面板
 
 右侧抽屉或大屏上的详情列包含：
 
-- Feature、Scenario 类型、源文件路径、行号、标签。
-- Given / When / Then / And 步骤，按原始顺序展示，只读。
+- Group、Test Type、Definition Kind、framework、源文件路径、行号、标签。
+- BDD Entry 展示 Given / When / Then / And 步骤；其他类型展示自己的 type-specific detail。
 - 最近一次执行摘要：环境、commit、状态、耗时、开始时间。
 - 最近执行列表：最多展示 5 条，点击进入 Execution 详情。
-- 固定的 `Run scenario` 按钮。
+- 固定的 `Run entry` 按钮。
 
 ## Execution 确认流程
 
 点击任意 Run 操作后打开模态框或右侧面板：
 
-1. 展示即将执行的 Scenario 列表；Feature 执行需要显示展开后的条目数量。
+1. 展示即将执行的 Catalog Entry 列表；Group 执行需要显示展开后的条目数量。
 2. 展示 Catalog Revision 的短 SHA、分支和同步时间，并明确文案：`This run is pinned to this commit`。
 3. 环境使用两个互斥选项：`dev`、`qa`；初始无选中项。
 4. 未选择环境时，主按钮禁用；按钮文案为 `Select an environment`。
@@ -85,7 +85,7 @@
 ## Executions 页面
 
 - 顶部筛选：状态、环境、时间范围、source。
-- 列表列：Execution ID、Scenario 数量、环境、commit、状态、发起人、开始时间、耗时。
+- 列表列：Execution ID、Entry 数量、环境、commit、状态、发起人、开始时间、耗时。
 - Queued / Running 固定置顶。
 - 行点击进入详情；状态使用文字 + 色彩 + 图标。
 - 空状态需要区分“还没有执行”和“筛选没有结果”。
@@ -93,15 +93,15 @@
 ### Execution 详情
 
 - 标题显示状态和执行 ID。
-- 摘要卡：Environment、Catalog Revision、source、Scenario 数量、发起人、开始/结束时间、耗时。
-- Scenario 结果表：每条 Scenario 的 Passed / Failed / Error / Cancelled / Skipped、耗时和错误摘要；Scenario Outline 的每个 `exampleValues` 单独一行。
+- 摘要卡：Environment、Catalog Revision、source、Entry 数量、Execution Profile、发起人、开始/结束时间、耗时。
+- Entry 结果表：每条 Entry 的 Passed / Failed / Error / Cancelled / Skipped、耗时和错误摘要；有子 case 时每个 `caseValues` 单独一行。
 - 运行中的执行显示实时刷新提示；首版可以轮询，间隔由实现模型决定。
 - Queued / Running 显示 `Cancel`，终态不显示取消按钮。
 - 基础设施 Error 要说明“没有得到可靠的测试结果”，并提供错误摘要；不能伪装成 Scenario Failed。
 
 ## Sources 页面
 
-每个 source 卡片展示：名称、仓库地址（可截断）、默认分支、最近同步 commit、同步时间、Scenario/Feature 数量和同步状态。点击卡片打开 source 详情；首版不提供编辑 source 配置的 UI。
+每个 source 卡片展示：名称、仓库地址（可截断）、默认分支、最近同步 commit、同步时间、Entry/Group 数量和同步状态。点击卡片打开 source 详情；首版不提供编辑 source 配置的 UI。
 
 ## 视觉方向
 
@@ -134,8 +134,8 @@
       "defaultBranch": "main",
       "latestRevision": { "commit": "a13f9c2", "syncedAt": "2026-07-21T02:10:00Z" },
       "syncStatus": "SYNCED",
-      "featureCount": 7,
-      "scenarioCount": 48
+      "groupCount": 7,
+      "entryCount": 48
     }
   ]
 }
@@ -145,13 +145,13 @@
 
 `GET /catalog?sourceId=checkout-web&q=login&status=FAILED&tag=smoke`
 
-返回 `revision` 和按 Feature 分组的 `features`。每个 Scenario 至少包含 `id`、`name`、`kind`、`tags`、`exampleCount`、`status`、`durationMs`、`lastRunAt`；尚未执行时 `status` 为 `NEVER_RUN`。`stats` 是 source-level 摘要，包含 `passRate`；目录筛选不会改变统计卡片的口径，当前 `passRate` 以最近 24 小时每个 Scenario 的最新可靠结果（`PASSED` / `FAILED`）计算，基础设施 `ERROR` 和用户取消不计入分母。
+返回 `revision` 和按 Test Group 分组的 `groups`。每个 Catalog Entry 至少包含 `id`、`name`、`testType`、`framework`、`definitionKind`、`tags`、`caseCount`、`status`、`durationMs`、`lastRunAt`；尚未执行时 `status` 为 `NEVER_RUN`。`stats` 是 source-level 摘要，包含 `passRate`；目录筛选不会改变统计卡片的口径，当前 `passRate` 以最近 24 小时每个 Entry 的最新可靠结果（`PASSED` / `FAILED`）计算，基础设施 `ERROR` 和用户取消不计入分母。
 
-### 获取 Scenario 详情
+### 获取 Catalog Entry 详情
 
-`GET /catalog/scenarios/{scenarioId}`
+`GET /catalog/entries/{entryId}`
 
-返回步骤、源文件路径、行号、Examples、最近执行摘要和最近执行列表。
+返回通用 Entry 信息、类型专属详情、源文件路径、行号、Examples（若为 BDD）、最近执行摘要和最近执行列表。
 
 ### 创建执行
 
@@ -162,12 +162,14 @@
 ```json
 {
   "sourceId": "checkout-web",
-  "scenarioIds": ["checkout-valid-card", "checkout-expired-card"],
-  "environment": "qa"
+  "entryIds": ["checkout-valid-card", "checkout-expired-card"],
+  "environment": "qa",
+  "revisionCommit": "a13f9c2",
+  "origin": "ui"
 }
 ```
 
-服务端从当前 Catalog Revision 创建执行并返回 `201`。环境只能是 `dev` 或 `qa`；不能由前端传入 commit 覆盖 Catalog Revision。
+服务端验证 `revisionCommit` 仍是当前 Catalog Revision，解析兼容的 Execution Profile 并创建执行，返回 `201`。环境只能是 `dev` 或 `qa`；客户端不能选择 connector、命令、job 或 credentials。`scenarioIds` 仅作为短期请求兼容别名，不再作为新客户端字段。
 
 ### 查询执行
 
@@ -175,7 +177,7 @@
 - `GET /executions/{executionId}`
 - `POST /executions/{executionId}/cancel`
 
-状态值使用前述六种 Execution Status。Scenario 断言失败与基础设施错误必须在响应中分开表达。
+状态值使用前述六种 Execution Status。Entry 断言失败与基础设施错误必须在响应中分开表达；结果使用 `entryId`/`entryName`，有子结果时使用 `caseId`/`caseValues`。
 
 ### 同步 source
 

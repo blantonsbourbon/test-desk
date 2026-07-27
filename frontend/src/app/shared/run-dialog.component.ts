@@ -35,8 +35,8 @@ import { formatAbsolute, shortSha } from '../core/format';
 
         <div class="dialog__body">
           <p class="lead">
-            {{ selection.scenarios.length }}
-            scenario{{ selection.scenarios.length === 1 ? '' : 's' }} will run against
+            {{ selection.entries.length }}
+            entr{{ selection.entries.length === 1 ? 'y' : 'ies' }} will run against
             <strong>{{ selection.sourceName }}</strong>.
           </p>
 
@@ -62,11 +62,11 @@ import { formatAbsolute, shortSha } from '../core/format';
           </div>
 
           <div class="scenario-list" role="list">
-            @for (scenario of selection.scenarios; track scenario.id) {
+            @for (entry of selection.entries; track entry.id) {
               <div class="scenario-list__item" role="listitem">
-                <span class="scenario-list__name">{{ scenario.name }}</span>
-                @if (scenario.featureName) {
-                  <span class="muted small">{{ scenario.featureName }}</span>
+                <span class="scenario-list__name">{{ entry.name }}</span>
+                @if (entry.groupName) {
+                  <span class="muted small">{{ entry.groupName }}</span>
                 }
               </div>
             }

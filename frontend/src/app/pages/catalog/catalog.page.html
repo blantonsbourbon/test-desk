@@ -10,18 +10,19 @@
 
     <div class="page-header__row">
       <div>
-        <h1>BDD test catalog</h1>
+        <h1>Test catalog</h1>
         @if (catalog) {
           <p class="subtitle">
-            Read-only view of
-            <strong>{{ catalog.source.name }}</strong>
-            at
-            <span class="mono">{{ shortSha(catalog.revision.commit) }}</span>
-            on
-            <span class="mono">{{ catalog.revision.branch }}</span>.
+            Read-only view of <strong>{{ catalog.source.name }}</strong>
+            @if (catalog.revision; as revision) {
+              at <span class="mono">{{ shortSha(revision.commit) }}</span>
+              on <span class="mono">{{ revision.branch }}</span>.
+            } @else {
+              with no synchronized revision available.
+            }
           </p>
         } @else {
-          <p class="subtitle">Discover scenarios and launch executions against a pinned commit.</p>
+          <p class="subtitle">Discover catalog entries and launch executions against a pinned commit.</p>
         }
       </div>
 
@@ -67,14 +68,16 @@
       </div>
     </div>
 
-    @if (catalog) {
-      <div class="meta-row">
-        <span>Last synced {{ formatRelative(catalog.revision.syncedAt) }}</span>
-        <span class="dot" aria-hidden="true">·</span>
-        <span class="mono">{{ shortSha(catalog.revision.commit) }}</span>
-        <span class="dot" aria-hidden="true">·</span>
-        <app-status-badge [status]="catalog.source.syncStatus" />
-      </div>
+    @if (catalog; as currentCatalog) {
+      @if (currentCatalog.revision; as revision) {
+        <div class="meta-row">
+          <span>Last synced {{ formatRelative(revision.syncedAt) }}</span>
+          <span class="dot" aria-hidden="true">·</span>
+          <span class="mono">{{ shortSha(revision.commit) }}</span>
+          <span class="dot" aria-hidden="true">·</span>
+          <app-status-badge [status]="currentCatalog.source.syncStatus" />
+        </div>
+      }
     }
 
     @if (syncError) {
@@ -92,29 +95,31 @@
     </div>
   }
 
-  @if (catalog) {
+  @if (catalog; as currentCatalog) {
     <section class="stats" aria-label="Catalog statistics">
       <article class="stat-card">
-        <div class="stat-card__label">Scenarios</div>
-        <div class="stat-card__value">{{ catalog.stats.scenarioCount }}</div>
+        <div class="stat-card__label">Entries</div>
+        <div class="stat-card__value">{{ currentCatalog.stats.entryCount }}</div>
       </article>
       <article class="stat-card">
-        <div class="stat-card__label">Features</div>
-        <div class="stat-card__value">{{ catalog.stats.featureCount }}</div>
+        <div class="stat-card__label">Groups</div>
+        <div class="stat-card__value">{{ currentCatalog.stats.groupCount }}</div>
       </article>
       <article class="stat-card stat-card--accent">
         <div class="stat-card__label">Pass rate (24h)</div>
-        <div class="stat-card__value">{{ passRateLabel(catalog.stats.passRate) }}</div>
+        <div class="stat-card__value">{{ passRateLabel(currentCatalog.stats.passRate) }}</div>
         <div class="stat-card__hint">
-          {{ catalog.stats.passedCount }} passed · {{ catalog.stats.failedCount }} failed
+          {{ currentCatalog.stats.passedCount }} passed · {{ currentCatalog.stats.failedCount }} failed
         </div>
       </article>
       <article class="stat-card">
-        <div class="stat-card__label">Last sync</div>
+        <div class="stat-card__label">Revision</div>
         <div class="stat-card__value stat-card__value--sm">
-          {{ formatRelative(catalog.revision.syncedAt) }}
+          {{ currentCatalog.revision ? shortSha(currentCatalog.revision.commit) : 'Unavailable' }}
         </div>
-        <div class="stat-card__hint">{{ formatAbsolute(catalog.revision.syncedAt) }}</div>
+        @if (currentCatalog.revision; as revision) {
+          <div class="stat-card__hint">{{ formatAbsolute(revision.syncedAt) }}</div>
+        }
       </article>
     </section>
 
@@ -123,7 +128,7 @@
         <span class="field__label">Search</span>
         <input
           type="search"
-          placeholder="Scenario, feature, path, or tag"
+          placeholder="Entry, group, framework, path, or tag"
           [(ngModel)]="query"
           (ngModelChange)="onQueryInput()"
         />
@@ -159,9 +164,7 @@
 
       <div class="toolbar__actions">
         @if (hasFilters) {
-          <button type="button" class="btn btn--ghost btn--sm" (click)="clearFilters()">
-            Clear filters
-          </button>
+          <button type="button" class="btn btn--ghost btn--sm" (click)="clearFilters()">Clear filters</button>
         }
         @if (selectedCount > 0) {
           <button type="button" class="btn btn--primary btn--sm" (click)="openRunSelected()">
@@ -174,31 +177,21 @@
     @if (loading) {
       <div class="panel empty">
         <p class="empty__title">Loading catalog…</p>
-        <p class="empty__body">Fetching the latest synchronized scenarios for this source.</p>
+        <p class="empty__body">Fetching synchronized test entries for this source.</p>
       </div>
-    } @else if (catalog.features.length === 0) {
+    } @else if (currentCatalog.groups.length === 0) {
       <div class="panel empty">
         @if (emptyBecauseFilters) {
-          <p class="empty__title">No matching scenarios</p>
+          <p class="empty__title">No matching entries</p>
           <p class="empty__body">Nothing matches the current search, status, or tag filters.</p>
           <div class="empty__actions">
-            <button type="button" class="btn btn--ghost btn--sm" (click)="clearFilters()">
-              Clear filters
-            </button>
+            <button type="button" class="btn btn--ghost btn--sm" (click)="clearFilters()">Clear filters</button>
           </div>
         } @else {
-          <p class="empty__title">No scenarios in this source</p>
-          <p class="empty__body">
-            Sync the Git source or verify that the repository contains
-            <span class="mono">.feature</span> files on the tracked branch.
-          </p>
+          <p class="empty__title">No entries in this source</p>
+          <p class="empty__body">Sync the source or verify that the repository contains supported test definitions.</p>
           <div class="empty__actions">
-            <button
-              type="button"
-              class="btn btn--primary btn--sm"
-              [disabled]="syncing"
-              (click)="syncSource()"
-            >
+            <button type="button" class="btn btn--primary btn--sm" [disabled]="syncing" (click)="syncSource()">
               Sync source
             </button>
           </div>
@@ -206,40 +199,34 @@
       </div>
     } @else {
       <div class="feature-list">
-        @for (feature of catalog.features; track feature.id) {
+        @for (group of currentCatalog.groups; track group.id) {
           <section class="feature panel">
-            <header class="feature__header" (click)="toggleFeature(feature.id)">
+            <header class="feature__header" (click)="toggleGroup(group.id)">
               <button
                 type="button"
                 class="collapse-btn"
-                [attr.aria-expanded]="!isCollapsed(feature.id)"
-                [attr.aria-label]="(isCollapsed(feature.id) ? 'Expand' : 'Collapse') + ' feature ' + feature.name"
-                (click)="$event.stopPropagation(); toggleFeature(feature.id)"
+                [attr.aria-expanded]="!isCollapsed(group.id)"
+                [attr.aria-label]="(isCollapsed(group.id) ? 'Expand' : 'Collapse') + ' group ' + group.name"
+                (click)="$event.stopPropagation(); toggleGroup(group.id)"
               >
                 <svg
                   viewBox="0 0 16 16"
                   fill="none"
                   aria-hidden="true"
-                  [class.collapse-btn__icon--open]="!isCollapsed(feature.id)"
+                  [class.collapse-btn__icon--open]="!isCollapsed(group.id)"
                 >
-                  <path
-                    d="M6 4l4 4-4 4"
-                    stroke="currentColor"
-                    stroke-width="1.6"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
+                  <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
                 </svg>
               </button>
 
               <div class="feature__meta">
                 <div class="feature__title-row">
-                  <h2>{{ feature.name }}</h2>
-                  <span class="count-pill">{{ feature.scenarioCount }} scenarios</span>
+                  <h2>{{ group.name }}</h2>
+                  <span class="count-pill">{{ group.entryCount }} entries</span>
                 </div>
                 <div class="feature__sub">
-                  <span class="mono path">{{ feature.sourcePath }}</span>
-                  @for (tag of feature.tags; track tag) {
+                  <span class="mono path">{{ group.sourcePath }}</span>
+                  @for (tag of group.tags; track tag) {
                     <span class="chip chip--static">{{ tag }}</span>
                   }
                 </div>
@@ -248,18 +235,18 @@
               <button
                 type="button"
                 class="btn btn--ghost btn--sm"
-                [attr.aria-label]="'Run feature ' + feature.name"
-                (click)="openRunForFeature(feature, $event)"
+                [attr.aria-label]="'Run group ' + group.name"
+                (click)="openRunForGroup(group, $event)"
               >
                 Run
               </button>
             </header>
 
-            @if (!isCollapsed(feature.id)) {
-              <div class="scenario-table" role="table" [attr.aria-label]="'Scenarios in ' + feature.name">
+            @if (!isCollapsed(group.id)) {
+              <div class="scenario-table" role="table" [attr.aria-label]="'Entries in ' + group.name">
                 <div class="scenario-table__head" role="row">
                   <div role="columnheader" class="col-check"></div>
-                  <div role="columnheader">Scenario</div>
+                  <div role="columnheader">Entry</div>
                   <div role="columnheader">Type</div>
                   <div role="columnheader">Status</div>
                   <div role="columnheader">Duration</div>
@@ -267,49 +254,47 @@
                   <div role="columnheader" class="col-actions"></div>
                 </div>
 
-                @for (scenario of feature.scenarios; track scenario.id) {
+                @for (entry of group.entries; track entry.id) {
                   <div
                     class="scenario-table__row"
                     role="row"
                     tabindex="0"
-                    [class.row-rail--failed]="scenario.status === 'FAILED'"
-                    [class.row-rail--passed]="scenario.status === 'PASSED'"
-                    (click)="openDetail(scenario)"
-                    (keydown.enter)="openDetail(scenario)"
-                    (keydown.space)="$event.preventDefault(); openDetail(scenario)"
+                    [class.row-rail--failed]="entry.status === 'FAILED'"
+                    [class.row-rail--passed]="entry.status === 'PASSED'"
+                    (click)="openDetail(entry)"
+                    (keydown.enter)="openDetail(entry)"
+                    (keydown.space)="$event.preventDefault(); openDetail(entry)"
                   >
                     <div role="cell" class="col-check" (click)="$event.stopPropagation()">
                       <input
                         type="checkbox"
-                        [checked]="isSelected(scenario.id)"
-                        [attr.aria-label]="'Select ' + scenario.name"
-                        (change)="toggleScenario(scenario.id, $any($event.target).checked)"
+                        [checked]="isSelected(entry.id)"
+                        [attr.aria-label]="'Select ' + entry.name"
+                        (change)="toggleEntry(entry.id, $any($event.target).checked)"
                       />
                     </div>
                     <div role="cell" class="scenario-name">
-                      <div class="scenario-name__text">{{ scenario.name }}</div>
-                      @if (scenario.tags.length) {
+                      <div class="scenario-name__text">{{ entry.name }}</div>
+                      @if (entry.tags.length) {
                         <div class="tag-row">
-                          @for (tag of scenario.tags; track tag) {
+                          @for (tag of entry.tags; track tag) {
                             <span class="chip chip--static">{{ tag }}</span>
                           }
                         </div>
                       }
                     </div>
                     <div role="cell">
-                      <span class="kind">{{ kindLabel(scenario.kind) }}</span>
+                      <span class="kind">{{ entry.testType }} · {{ kindLabel(entry.definitionKind) }}</span>
                     </div>
-                    <div role="cell">
-                      <app-status-badge [status]="scenario.status" />
-                    </div>
-                    <div role="cell" class="mono">{{ formatDuration(scenario.durationMs) }}</div>
-                    <div role="cell" class="last-run">{{ formatRelative(scenario.lastRunAt) }}</div>
+                    <div role="cell"><app-status-badge [status]="entry.status" /></div>
+                    <div role="cell" class="mono">{{ formatDuration(entry.durationMs) }}</div>
+                    <div role="cell" class="last-run">{{ formatRelative(entry.lastRunAt) }}</div>
                     <div role="cell" class="col-actions" (click)="$event.stopPropagation()">
                       <button
                         type="button"
                         class="icon-btn"
-                        [attr.aria-label]="'Run scenario ' + scenario.name"
-                        (click)="openRunForScenario(scenario, feature, $event)"
+                        [attr.aria-label]="'Run entry ' + entry.name"
+                        (click)="openRunForEntry(entry, group, $event)"
                       >
                         <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
                           <path d="M5 3.5v9l8-4.5-8-4.5z" fill="currentColor" />
@@ -333,7 +318,7 @@
 </div>
 
 @if (detail || detailLoading || detailError) {
-  <app-scenario-detail-panel
+  <app-catalog-entry-detail-panel
     [detail]="detail"
     [loading]="detailLoading"
     [error]="detailError"
