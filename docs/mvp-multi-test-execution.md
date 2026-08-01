@@ -1,5 +1,14 @@
 # Multi-test-type execution MVP
 
+> Historical design note: this document describes the repository's earlier
+> `BDD | API | Integration` model. The accepted target classification is now
+> `UI | Integration | Regression`; BDD is a Definition Style rather than a Test
+> Type. See
+> [ADR-0004](adr/0004-use-three-test-types-and-normalize-jenkins-output.md),
+> [the result workspace design](design/test-results-workspaces.md), and
+> [the target Jenkins result architecture](architecture/jenkins-test-results.md).
+> Concrete migration and implementation are intentionally deferred.
+
 ## Decision
 
 Test Desk will support test meaning and execution integration as two independent dimensions:

@@ -4,11 +4,20 @@ Spring Boot 3 backend and Angular 19 console for an internal, generic Test Catal
 
 The frontend design is documented in [docs/frontend-design.md](docs/frontend-design.md). It includes the screen behavior and the `/api/v1` contract that the backend implements.
 
-The proposed MVP for supporting BDD, API, and integration tests through Ansible and Jenkins is documented in [docs/mvp-multi-test-execution.md](docs/mvp-multi-test-execution.md).
+The earlier v0.3 MVP model is retained as a historical design note in
+[docs/mvp-multi-test-execution.md](docs/mvp-multi-test-execution.md).
 
 The contributor seams for catalog adapters, execution connectors, profiles, origins, and normalized results are documented in [docs/architecture/generic-execution.md](docs/architecture/generic-execution.md).
 
 The detailed current architecture is documented in [docs/architecture/testdesk-architecture.md](docs/architecture/testdesk-architecture.md), and the dependency-driven implementation plan is in [docs/roadmap.md](docs/roadmap.md).
+
+The accepted target model uses exactly three Test Types—UI, Integration, and
+Regression—with BDD treated as a Definition Style. The product and technical
+design are documented in:
+
+- [Test result workspaces](docs/design/test-results-workspaces.md)
+- [Target Jenkins result-ingestion architecture](docs/architecture/jenkins-test-results.md)
+- [ADR-0004: Use three Test Types and normalize Jenkins output](docs/adr/0004-use-three-test-types-and-normalize-jenkins-output.md)
 
 ## Requirements
 
