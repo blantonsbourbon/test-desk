@@ -155,12 +155,14 @@ generic pass.
 Status always uses text plus color and, where useful, an icon. Color is never
 the sole signal.
 
-## Responsive and accessible behavior
+## Desktop and accessible behavior
 
-- Desktop uses a compact type rail and two-column diagnosis workspace.
-- Narrow screens stack the run context, type summaries, results, and evidence
-  without horizontal scrolling.
-- Interactive targets are at least 44 by 44 CSS pixels on touch layouts.
+- This design targets desktop test-control workflows at viewports of 1280
+  CSS pixels and wider. Mobile and touch layouts are explicitly out of scope.
+- The Test Type rail retains all summary columns so counts, duration, build,
+  and status remain comparable without opening each workspace.
+- The result and evidence panes remain side by side; diagnostic evidence is
+  not pushed below the result list to accommodate narrow screens.
 - Keyboard focus is visible; type selection and result rows are operable
   without a pointer.
 - Live lifecycle updates use a polite live region and do not repeatedly steal
@@ -169,8 +171,6 @@ the sole signal.
   visual alternative is not meaningful.
 - Reduced-motion preferences disable nonessential transitions.
 
-![Mobile UI test result workspace](../images/test-results-workspaces/mobile-ui-results.png)
-
 ## Out of scope for this design
 
 - Editing test definitions.
@@ -178,3 +178,4 @@ the sole signal.
 - Treating BDD as a fourth Test Type.
 - Parsing unstructured Jenkins console text into test outcomes.
 - Defining cross-application orchestration or workflow dependencies.
+- Mobile and touch-specific layouts.
