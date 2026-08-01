@@ -1,12 +1,18 @@
-# Test Desk 前端设计文档
+# Test Desk v0.3 前端现状
 
-## 目标
+> 本文记录当前 `v0.3.0` 的 Catalog 与 Execution UI/API 形态，用于迁移
+> 期间核对现有行为，不再作为目标结果体验。目标桌面端方案见
+> [Test result workspaces](design/test-results-workspaces.md)，目标 API 与
+> 状态模型见
+> [Application Runs and Jenkins result ingestion](architecture/jenkins-test-results.md)。
 
-首版前端是 Git 测试定义的 **Test Catalog** 与 **Test Execution** 控制台：团队可以发现不同类型的测试条目、查看类型专属详情和最近结果、选择 `dev` 或 `qa` 环境发起执行，并观察执行状态。当前样例数据是 BDD，页面和 API 使用 generic Catalog Entry contract。
+## 当前目标
+
+当前前端是 Git 测试定义的 **Test Catalog** 与 **Test Execution** 控制台：团队可以发现不同类型的测试条目、查看类型专属详情和最近结果、选择 `dev` 或 `qa` 环境发起执行，并观察执行状态。当前样例数据是 BDD，页面和 API 使用 generic Catalog Entry contract。
 
 前端不编辑 `.feature` 文件，不维护测试定义副本，也不暴露 Windows Server、Ansible、Playwright 等执行基础设施细节。
 
-## 已确认的产品边界
+## v0.3 已实现边界
 
 - Git 中的 `.feature` 文件是 Test Source 的唯一事实来源。
 - Test Catalog 是 Test Source 的只读视图。
@@ -108,7 +114,8 @@
 - 气质：轻量测试控制台（参考 [TestDino](https://testdino.com) 产品风），优先信息密度和扫描速度，不做营销页。
 - 浅色画布 + 白卡片 + 柔和灰边框；主操作为近黑实心按钮；通过/失败等状态使用带软底色的色点 chip。
 - 字体：Geist / Inter 无衬线；commit SHA、路径和 ID 使用 Geist Mono / JetBrains Mono。
-- 采用 8px 间距基线；主内容最大宽度约 1440px；桌面端左侧导航固定，移动端折叠为顶部菜单。
+- 采用 8px 间距基线；主内容最大宽度约 1440px；目标结果工作区以
+  `1280px+` 桌面端为验收范围，不设 Mobile/Touch 结果体验要求。
 - 卡片边框为主、轻阴影为辅；只在模态、抽屉和 toast 上使用更明显层级。
 - 动效只用于同步、状态变化和抽屉打开，持续时间短且支持 reduced-motion。
 

@@ -1,23 +1,29 @@
 # Test result workspaces
 
-This document defines the target result experience for `UI`, `Integration`,
-and `Regression` tests. It describes product behavior and information
-architecture only; the current application does not yet implement this target.
+This document defines the target desktop result experience for `UI`,
+`Integration`, and `Regression` Test Runs. It is a product and information
+architecture specification; the current application does not yet implement
+this target.
 
 Interactive reference:
 [public prototype](https://test-desk-types-prototype.lov3camilleblanton.chatgpt.site/executions/prototype-test-types).
+
+The domain decisions are recorded in
+[ADR-0004](../adr/0004-use-three-test-types-and-normalize-jenkins-output.md)
+and
+[ADR-0005](../adr/0005-group-test-runs-and-derive-regression-comparisons.md).
 
 ## Product intent
 
 Test Desk is an internal test control room. A user should be able to answer,
 without opening Jenkins:
 
-1. What ran, against which environment and source revision?
-2. Which Test Type failed?
-3. What is the first useful piece of diagnostic evidence?
-4. Is the failure an assertion failure or a runner/infrastructure error?
-5. Which Jenkins build produced the result when deeper investigation is
-   necessary?
+1. What Application Run was requested, against which Environment and revision?
+2. Which Source Test Runs were dispatched and which one needs attention?
+3. Are the test assertions trustworthy, incomplete, or unavailable?
+4. What is the first useful piece of diagnostic evidence?
+5. What changed against the pinned Baseline?
+6. Which Jenkins queue item or build should be opened for deeper investigation?
 
 The visual direction borrows the compact product-console language of the
 [TestDino product demo](https://testdino.com/): a light neutral canvas, white
@@ -25,157 +31,235 @@ working surfaces, near-black primary actions, compact run context, and
 scannable status chips. Test Desk keeps its own information architecture and
 does not copy TestDino branding or marketing composition.
 
-## One application, three independent Test Types
+## One Application Run, three Test Types
 
-An Application is the shared context. It may expose any combination of UI,
-Integration, and Regression suites. The application page shows all available
-types together, while every type retains an independent run and output model.
+`Run all` creates one Application Run. The Application Run pins Application,
+Environment, source revision, trigger identity, and Regression Baseline
+resolution. It then owns independently observable child Test Runs.
 
-```text
-Application: Checkout Web
-├── UI tests           Jenkins #842   Failed
-├── Integration tests  Jenkins #843   Failed
-└── Regression tests   Jenkins #844   Failed
+```mermaid
+flowchart LR
+    AR["Application Run<br/>Checkout Web · qa · a13f9c2"]
+    UI["UI Source Test Runs<br/>2 suites · Jenkins #842/#845"]
+    INT["Integration Source Test Runs<br/>3 suites · Jenkins #843/#846/#847"]
+    REG["Regression Test Run<br/>derived comparison"]
+    BASE["Pinned Baseline<br/>Application Run AR-1042"]
+
+    AR --> UI
+    AR --> INT
+    UI --> REG
+    INT --> REG
+    BASE --> REG
 ```
 
-`Run all` creates or links three independently observable runs. A failure in
-one type must not hide the result or evidence of another. The page may display
-an overall “attention required” summary, but it must not invent a fourth,
-cross-type test result.
+UI and Integration are Source Test Runs. They can be dispatched independently
+through Jenkins and may contain multiple suites. Regression is a separate Test
+Type and workspace, but it is a derived Test Run: it begins only after its
+configured candidate Source Test Runs reach a terminal lifecycle and its
+Baseline has been pinned.
+
+An Application can have zero or more UI/Integration suites and Regression
+policies:
+
+- a configured type shows its aggregate state and number of child suites/runs;
+- an unconfigured type remains visible as `Not configured` so the three-type
+  product vocabulary stays stable;
+- a type with multiple suites shows `N suites` and `N builds`, not one
+  misleading Jenkins build number.
+
+The Application Run may show an operational summary such as `Attention
+required` or `2 of 3 types complete`. It does not invent a fourth Test Outcome.
+
+## `Run all` behavior
+
+1. Create one idempotent Application Run and pin Environment, revision, and
+   actor.
+2. Resolve every configured UI and Integration Execution Profile.
+3. Resolve and persist the Regression Baseline and Compatibility Fingerprint
+   before any comparison can start.
+4. Dispatch each Source Test Run independently and record per-run success or
+   dispatch failure; do not roll back external runs that already started.
+5. Collect and normalize every declared report.
+6. Start the derived Regression Test Run when all required candidate Source
+   Test Runs are terminal.
+7. If a required candidate has invalid output, complete Regression with
+   `Outcome = Unknown` and `Ingestion = Error` instead of fabricating deltas.
+8. A user may retry only the failed dispatch or rerun one Test Type; every
+   retry creates a new Test Run attempt linked to the same or a new Application
+   Run according to the chosen action.
 
 ## Shared screen structure
 
 All three workspaces use the same outer structure:
 
-1. **Application header** — application name, source health, `Run all`, and
-   `Open Jenkins`.
-2. **Run context** — environment, branch, pinned revision, trigger identity,
-   lifecycle status, timestamps, and duration.
-3. **Test Type rail** — exactly three compact summaries with status, counts,
-   duration, framework, and Jenkins build number.
-4. **Type workspace** — the selected type's diagnosis-first output.
-5. **Escape hatches** — raw report download, bounded runner output, and Jenkins
-   link, visually secondary to normalized results.
+1. **Application header** — Application name, source health, `Run all`, and
+   external execution links.
+2. **Application Run context** — Application Run ID, Environment, branch,
+   pinned revision, trigger identity, Baseline, timestamps, and child-run
+   progress.
+3. **Trust summary** — lifecycle, assertion outcome, and ingestion state are
+   shown separately.
+4. **Test Type rail** — three stable rows containing configured suite count,
+   run/build count, aggregate outcome, ingestion state, and duration.
+5. **Type workspace** — the selected type's diagnosis-first output.
+6. **Escape hatches** — sanitized report download, bounded runner output, and
+   authorized Jenkins link, visually secondary to normalized results.
 
-The selected Test Type is encoded in the URL when implemented so a diagnostic
-view can be shared and restored. Refreshing the page must preserve both type
-and selected result entry.
+The selected Test Type, Test Run, suite, and Result Entry are encoded in the
+URL so a diagnostic view can be shared and restored.
 
-## Lifecycle after a Jenkins trigger
+## Three independent state axes
 
 ```mermaid
 stateDiagram-v2
-    [*] --> QUEUED: trigger accepted
-    QUEUED --> RUNNING: Jenkins build starts
-    RUNNING --> COLLECTING: build reaches terminal state
-    COLLECTING --> PASSED: valid report, no failures
-    COLLECTING --> FAILED: valid report, assertion failures
-    COLLECTING --> ERROR: report missing or invalid
+    [*] --> QUEUED: dispatch accepted
+    QUEUED --> RUNNING: external execution starts
+    RUNNING --> COLLECTING: external execution terminal
+    COLLECTING --> COMPLETED: ingestion terminal
+    QUEUED --> COMPLETED: dispatch rejected / timeout
     QUEUED --> CANCELLED: queue item aborted
     RUNNING --> CANCELLED: build aborted
 ```
 
-While queued or running, the workspace shows Jenkins queue/build identity,
-elapsed time, the latest normalized progress, and a visible refresh state.
-Console output can be opened on demand but is never the only progress signal.
+Each Test Run shows:
 
-During `Collecting`, the UI says that artifacts are being validated. This
-prevents a green Jenkins build from briefly appearing as a completed Test Desk
-result before the report is available.
+| Axis | Values | Answers |
+|---|---|---|
+| Execution Lifecycle | `Queued`, `Running`, `Collecting`, `Completed`, `Cancelled` | Where is the run operationally? |
+| Test Outcome | `Passed`, `Failed`, `Unknown` | What do trustworthy assertions say? |
+| Ingestion State | `Pending`, `Valid`, `Partial`, `Error` | How complete and trustworthy is the report? |
+
+Jenkins native status appears only as external metadata. For example, a Test
+Run can be `Lifecycle = Completed`, `Outcome = Passed`, `Ingestion = Valid`
+while the Jenkins build is `Unstable` because a non-test publishing step
+failed. Conversely, a partial report may expose known Result Entries while
+keeping `Outcome = Unknown`.
 
 ## UI test workspace
 
-UI tests represent a user journey. The primary reading order is:
+UI tests represent user journeys. When a type contains multiple suites, the
+workspace exposes a compact suite/run selector before the result list.
 
-1. journey name and browser/device context;
-2. ordered steps with Passed, Failed, or Skipped state;
-3. the first failed assertion;
-4. the screenshot captured at failure;
-5. Playwright trace, video, console, and network evidence.
+The primary reading order is:
 
-The evidence preview stays adjacent to the failed step. A user should not have
-to search a generic artifact list to find the screenshot associated with the
-failure. Subsequent steps skipped because of the failure are visibly distinct
-from failed steps.
+1. suite, browser, device, and Jenkins build context;
+2. journey name and ordered steps;
+3. lifecycle, outcome, and ingestion trust;
+4. the first failed assertion;
+5. screenshot captured at failure;
+6. Playwright trace, video, sanitized console, and network evidence.
+
+Evidence stays adjacent to the failed step. Subsequent steps skipped because of
+the failure remain distinct from failed steps.
 
 ![UI test result workspace](../images/test-results-workspaces/ui-results.png)
 
 ## Integration test workspace
 
-Integration tests represent a suite of API or service-boundary checks. Rest
-Assured with JUnit 5 is one supported framework combination, not part of the
-Test Type identity.
+Integration tests represent API or service-boundary suites. Rest Assured with
+JUnit 5 is one framework combination, not part of Test Type identity.
 
 The primary reading order is:
 
-1. suite and service context;
-2. request/case rows with method, route, status, duration, and assertion state;
+1. suite, service, Environment, and Jenkins build context;
+2. cases with method, route, response status, duration, and assertion outcome;
 3. selected request and response summary;
 4. assertion or schema/contract difference;
-5. sanitized headers, body, dependency logs, and the raw report.
+5. sanitized headers, body, dependency logs, and normalized report.
 
 Secrets, tokens, cookies, and configured sensitive fields are redacted before
-evidence becomes available. Large bodies are truncated with an authorized
-download path to the original artifact.
+evidence becomes available. Normal users can download only sanitized
+derivatives. Raw artifacts, when operationally retained, remain encrypted and
+quarantined behind a separate audited support role.
 
 ![Integration test result workspace](../images/test-results-workspaces/integration-results.png)
 
 ## Regression test workspace
 
-Regression tests compare a candidate result set with a pinned accepted
-baseline. The baseline and candidate revision are part of the visible run
-context, not hidden configuration.
+Regression compares normalized candidate Source Test Runs with a pinned,
+compatible Baseline. It is not dispatched in parallel with those inputs.
 
-The summary separates:
+The workspace always exposes provenance:
 
-- new failures;
-- persistent failures;
-- fixed cases;
-- unchanged passes;
-- unexecuted or missing cases.
+- candidate Application Run and Source Test Run IDs;
+- Baseline Application Run and Source Test Run IDs;
+- Environment and source revisions;
+- Compatibility Fingerprint;
+- Regression Policy and blocking-delta rules;
+- comparison start/completion time.
 
-Rows retain stable case identity and show both baseline and candidate state.
-New failures appear first, followed by persistent failures, unexecuted cases,
-fixed cases, and unchanged results. “Fixed” is a positive delta, not merely a
-generic pass.
+The summary keeps these categories distinct:
+
+- **new blocking failures** — candidate failed and baseline did not;
+- **persistent failures** — failed in both;
+- **fixed** — failed in baseline and passed in candidate;
+- **unchanged** — comparable result is unchanged;
+- **added cases** — stable identity exists only in candidate;
+- **removed cases** — stable identity exists only in baseline;
+- **not selected** — intentionally outside the candidate selection;
+- **missing/invalid** — expected input was absent or untrustworthy.
+
+`Unexecuted` is not a catch-all. Intentional selection, runner skip, removed
+case, and missing report are different states.
+
+The candidate Source Test Run IDs are frozen when comparison starts. Retrying
+a Source Test Run does not rewrite an existing comparison; `Recompare` creates
+a new Regression Test Run attempt when it can pin a changed candidate set. If
+policy version, candidate IDs, and Baseline IDs are unchanged, the action is
+idempotent.
+
+Rows match by:
+
+```text
+Application + Test Suite + stable case ID + parameter key
+```
+
+Display name, file line, array position, and run-local ID are never comparison
+keys. Candidate and Baseline must share a Compatibility Fingerprint covering
+Environment, suite configuration, dataset, framework/report contract, and
+Regression Policy identity.
+
+A valid comparison is `Failed` only when its Regression Policy finds a
+blocking delta. Persistent known failures may remain visible without being
+blocking. Partial or invalid required inputs force `Outcome = Unknown`.
 
 ![Regression comparison workspace](../images/test-results-workspaces/regression-results.png)
 
 ## Status and output rules
 
-| Situation | Display |
-|---|---|
-| Valid report with failed assertion | `Failed`; focus the failed result and evidence |
-| Jenkins or network failure before a reliable report | `Error`; explain that no reliable result was obtained |
-| Jenkins build failed but a valid report exists | Derive `Passed`/`Failed` from the report; show build state as secondary metadata |
-| Report missing, unsupported, or malformed | `Error`; offer report validation details and Jenkins link |
-| User aborts queue item or build | `Cancelled`; retain known timing and external reference |
-| Child case not run | `Skipped`; explain whether it was filtered or blocked by an earlier failure |
+| Situation | Lifecycle | Outcome | Ingestion |
+|---|---|---|---|
+| Valid report with no failed assertion | `Completed` | `Passed` | `Valid` |
+| Valid report with failed assertion | `Completed` | `Failed` | `Valid` |
+| Known results plus missing required entries | `Completed` | `Unknown` | `Partial` |
+| Report missing, unsupported, or malformed | `Completed` | `Unknown` | `Error` |
+| Queue item or build deliberately aborted | `Cancelled` | `Unknown` | `Pending` or observed terminal ingestion |
+| Jenkins non-test step fails after a valid report | `Completed` | Derived from report | `Valid`; Jenkins failure shown separately |
+| Regression finds blocking deltas | `Completed` | `Failed` | `Valid` |
+| Regression input is invalid | `Completed` | `Unknown` | `Error` |
 
-Status always uses text plus color and, where useful, an icon. Color is never
-the sole signal.
+Result Entry status still uses `Passed`, `Failed`, or `Skipped`. Every status
+uses text plus color; color is never the sole signal.
 
 ## Desktop and accessible behavior
 
-- This design targets desktop test-control workflows at viewports of 1280
-  CSS pixels and wider. Mobile and touch layouts are explicitly out of scope.
-- The Test Type rail retains all summary columns so counts, duration, build,
-  and status remain comparable without opening each workspace.
-- The result and evidence panes remain side by side; diagnostic evidence is
-  not pushed below the result list to accommodate narrow screens.
-- Keyboard focus is visible; type selection and result rows are operable
-  without a pointer.
+- This design targets desktop test-control workflows at viewports of 1280 CSS
+  pixels and wider. Mobile and touch layouts are explicitly out of scope.
+- The Test Type rail retains all summary columns so suites, runs, outcome,
+  ingestion, duration, and build provenance remain comparable.
+- Result and evidence panes remain side by side.
+- Keyboard focus is visible; type selection, suite selection, and result rows
+  are operable without a pointer.
 - Live lifecycle updates use a polite live region and do not repeatedly steal
   focus.
-- Evidence has a descriptive text alternative or filename and type when a
-  visual alternative is not meaningful.
+- Evidence has a descriptive text alternative or filename and type.
 - Reduced-motion preferences disable nonessential transitions.
 
-## Out of scope for this design
+## Out of scope
 
-- Editing test definitions.
+- Editing Test Definitions.
 - Configuring arbitrary Jenkins jobs, parameters, or credentials from the UI.
 - Treating BDD as a fourth Test Type.
-- Parsing unstructured Jenkins console text into test outcomes.
-- Defining cross-application orchestration or workflow dependencies.
+- Parsing unstructured Jenkins console text into Test Outcomes.
+- Cross-Application orchestration or workflow dependencies.
 - Mobile and touch-specific layouts.

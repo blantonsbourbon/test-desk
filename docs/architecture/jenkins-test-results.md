@@ -1,55 +1,68 @@
-# Target architecture: Jenkins test-result ingestion
+# Target architecture: Application Runs and Jenkins result ingestion
 
-This document describes the target architecture for displaying UI,
-Integration, and Regression results produced through Jenkins. It is a design
-artifact, not a description of the current implementation.
+This document describes the target architecture for coordinating and
+displaying UI, Integration, and Regression results. It is a design artifact,
+not a description of the current implementation.
 
-The classification and status semantics are governed by
-[ADR-0004](../adr/0004-use-three-test-types-and-normalize-jenkins-output.md).
+The governing decisions are:
 
-## Context and boundaries
+- [ADR-0004: Use three Test Types and normalize Jenkins output](../adr/0004-use-three-test-types-and-normalize-jenkins-output.md)
+- [ADR-0005: Group Test Runs and derive Regression comparisons](../adr/0005-group-test-runs-and-derive-regression-comparisons.md)
 
-Test Desk owns application/test metadata, execution intent, normalized result
-history, evidence metadata, authorization, and the product experience. Jenkins
-owns queueing and build execution. Git remains the source of test definitions,
-and durable artifact storage owns large reports and evidence.
+## Context and ownership
 
-The public request identifies the Application, Test Type or selected suites,
-environment, and pinned source revision. It never accepts Jenkins credentials,
-arbitrary job names, scripts, or unrestricted parameters.
+Test Desk owns Application/test metadata, Application Run intent, normalized
+result history, Regression comparison, evidence metadata, authorization, and
+the product experience. Jenkins owns queueing and execution of UI and
+Integration Source Test Runs. Git remains the source of Test Definitions, and
+managed object storage owns durable reports and evidence.
+
+Regression is a Test Type but not an unrelated third parallel job. A
+Regression Test Run is derived after its configured UI/Integration Source Test
+Runs become terminal and their candidate output has been ingested.
+
+The public request identifies Application, Environment, pinned source revision,
+and selected suites/types. It never accepts Jenkins credentials, arbitrary job
+names, scripts, or unrestricted parameters.
 
 ```mermaid
 flowchart LR
     USER["User / API client"]
+    GIT["Git Test Source"]
+    JENKINS["Jenkins controller / agents"]
+    OBJECTS[("Managed artifact storage")]
 
     subgraph TD["Test Desk"]
-        API["Execution API"]
-        ORCH["Execution Orchestrator"]
+        API["Application Run API"]
+        COORD["Application Run coordinator"]
         PROFILE["Server-managed profiles"]
         JCON["Jenkins connector"]
         INGEST["Result ingestor"]
-        ADAPTERS["Type adapters<br/>UI · Integration · Regression"]
-        RESULTS[("Result store")]
+        TYPE["UI / Integration adapters"]
+        BASE["Baseline resolver"]
+        COMPARE["Regression comparator"]
+        RESULT[("Normalized result store")]
         EVIDENCE[("Evidence metadata")]
-        BASELINE["Baseline resolver"]
+        AUDIT[("Audit log")]
     end
 
-    GIT["Git test source"]
-    JENKINS["Jenkins controller / agents"]
-    ARTIFACTS[("Artifact storage")]
-
-    USER --> API --> ORCH
-    ORCH --> PROFILE --> JCON
-    JCON --> JENKINS
+    USER --> API --> COORD
+    COORD --> PROFILE --> JCON --> JENKINS
     JENKINS --> GIT
-    JENKINS --> ARTIFACTS
+    JENKINS --> OBJECTS
     JCON --> INGEST
-    ARTIFACTS --> INGEST
-    INGEST --> ADAPTERS --> RESULTS
+    OBJECTS --> INGEST
+    INGEST --> TYPE --> RESULT
     INGEST --> EVIDENCE
-    BASELINE --> ADAPTERS
-    RESULTS --> BASELINE
-    RESULTS --> API --> USER
+    COORD --> BASE
+    RESULT --> BASE
+    RESULT --> COMPARE
+    BASE --> COMPARE
+    COMPARE --> RESULT
+    COORD --> AUDIT
+    INGEST --> AUDIT
+    API --> RESULT
+    RESULT --> API --> USER
 ```
 
 ## Domain model
@@ -57,11 +70,17 @@ flowchart LR
 ```mermaid
 erDiagram
     APPLICATION ||--o{ TEST_SUITE : owns
-    TEST_SUITE ||--o{ TEST_RUN : executes
+    APPLICATION ||--o{ REGRESSION_POLICY : owns
+    APPLICATION ||--o{ APPLICATION_RUN : evaluates
+    APPLICATION_RUN ||--o{ TEST_RUN : coordinates
+    TEST_SUITE o|--o{ TEST_RUN : executes_as
     TEST_RUN ||--o{ RESULT_ENTRY : contains
     RESULT_ENTRY ||--o{ EVIDENCE : references
+    TEST_RUN o|--o| EXTERNAL_EXECUTION : dispatched_as
+    REGRESSION_POLICY o|--o{ TEST_RUN : configures
+    TEST_RUN ||--o{ REGRESSION_INPUT : comparison
+    REGRESSION_INPUT }o--|| TEST_RUN : source_run
     TEST_RUN o|--o| BASELINE_REFERENCE : compares_against
-    TEST_RUN ||--|| EXTERNAL_EXECUTION : dispatched_as
 
     APPLICATION {
       string id
@@ -69,29 +88,47 @@ erDiagram
     }
     TEST_SUITE {
       string id
-      enum testType
+      enum sourceTestType
       string framework
       string definitionStyle
     }
-    TEST_RUN {
+    REGRESSION_POLICY {
       string id
-      enum testType
-      enum status
+      string comparisonScope
+      string blockingRules
+      string baselinePolicy
+    }
+    APPLICATION_RUN {
+      string id
+      enum coordinationState
       string environment
       string revision
+      string triggeredBy
+      datetime createdAt
+    }
+    TEST_RUN {
+      string id
+      string applicationRunId
+      string testSuiteId
+      string regressionPolicyId
+      enum testType
+      enum lifecycle
+      enum outcome
+      enum ingestionState
+      int attempt
       datetime startedAt
       datetime finishedAt
     }
     RESULT_ENTRY {
-      string stableId
-      string parentId
+      string resultIdentity
+      string parentIdentity
       enum status
       int durationMs
       string message
     }
     EVIDENCE {
       string kind
-      string objectKey
+      string sanitizedObjectKey
       string mediaType
       string redactionState
     }
@@ -101,184 +138,371 @@ erDiagram
       string url
       string nativeStatus
     }
+    REGRESSION_INPUT {
+      string role
+      string sourceTestRunId
+    }
     BASELINE_REFERENCE {
-      string runId
-      string revision
-      string policy
+      string applicationRunId
+      string sourceTestRunIds
+      string compatibilityFingerprint
+      string resolutionPolicy
     }
 ```
 
-`testType` is one of `UI`, `INTEGRATION`, or `REGRESSION`.
-`definitionStyle` may contain `BDD` but does not influence dispatch or the
-normalized result contract.
+### Invariants
 
-## Execution and ingestion sequence
+- One Application Run has exactly one Application, Environment, revision, and
+  trigger identity.
+- One Test Run belongs to exactly one Application Run and one Test Type.
+- UI and Integration Test Runs reference exactly one Test Suite, do not
+  reference a Regression Policy, and may own an External Execution.
+- Regression Test Runs reference exactly one Regression Policy, do not
+  reference a Test Suite, and own one or more candidate Source Test Run
+  references plus one immutable Baseline; External Execution is optional.
+- A Test Suite has exactly one Source Test Type (`UI` or `Integration`).
+  Regression is configured by a Regression Policy; BDD is an optional
+  Definition Style.
+- Candidate and Baseline must share a Compatibility Fingerprint.
+- Result Identity is stable across revisions and namespaced by Application,
+  Test Suite, stable case ID, and parameter key.
+- Application Run coordination state is not a synthetic Test Outcome.
+
+## State model
+
+Application Run state reports coordination only:
+
+```mermaid
+stateDiagram-v2
+    [*] --> CREATED
+    CREATED --> DISPATCHING: intent persisted
+    CREATED --> COMPLETED: no configured work
+    DISPATCHING --> RUNNING: every source dispatch attempted
+    RUNNING --> COMPARING: required source runs terminal
+    RUNNING --> COMPLETED: no Regression policy
+    COMPARING --> COMPLETED: comparisons terminal
+    CREATED --> CANCELLED: cancel all
+    DISPATCHING --> CANCELLED: cancel all
+    RUNNING --> CANCELLED: cancel all
+    COMPARING --> CANCELLED: cancel all
+```
+
+`Completed` means every required child attempt and comparison is terminal; it
+does not mean they passed. `Cancelled` records an explicit Application Run
+cancellation and the resulting per-child cancellation attempts. Already
+terminal child results remain immutable.
+
+Every Test Run stores independent lifecycle, outcome, and ingestion values:
+
+```mermaid
+stateDiagram-v2
+    [*] --> QUEUED
+    QUEUED --> RUNNING
+    RUNNING --> COLLECTING
+    COLLECTING --> COMPLETED
+    QUEUED --> COMPLETED: dispatch rejected / timeout
+    QUEUED --> CANCELLED
+    RUNNING --> CANCELLED
+```
+
+```text
+Execution Lifecycle = QUEUED | RUNNING | COLLECTING | COMPLETED | CANCELLED
+Test Outcome       = PASSED | FAILED | UNKNOWN
+Ingestion State    = PENDING | VALID | PARTIAL | ERROR
+```
+
+Jenkins native status is retained on External Execution but never overwrites
+these axes. Dispatch failure completes a Test Run with `Outcome = Unknown`,
+`Ingestion = Error`, no External Execution when none was created, and a
+structured failure stage.
+
+### Type-level aggregation
+
+An Application can own multiple suites of one Test Type. The type rail derives
+a read model rather than storing another result:
+
+- lifecycle is active while any selected child run is non-terminal;
+- outcome is `Failed` when any child has a failed trustworthy outcome,
+  otherwise `Unknown` when any required child is unknown, otherwise `Passed`;
+- ingestion is `Error` when all required output is invalid, `Partial` when
+  valid and incomplete output coexist, otherwise `Valid` or `Pending`;
+- suite count, run attempt count, build count, and duration remain explicit.
+
+## `Run all` sequence
 
 ```mermaid
 sequenceDiagram
     actor User
-    participant API as Test Desk API
-    participant Orch as Orchestrator
-    participant JC as Jenkins connector
-    participant J as Jenkins
-    participant A as Artifact storage
-    participant I as Result ingestor
-    participant DB as Result store
+    participant API as Application Run API
+    participant C as Coordinator
+    participant B as Baseline resolver
+    participant P as Profile registry
+    participant J as Jenkins connector
+    participant S as Result store
 
-    User->>API: Run application/type at revision
-    API->>Orch: create execution
-    Orch->>JC: submit(profile, executionId, revision, environment)
-    JC->>J: trigger allow-listed job
-    J-->>JC: queue item ID
-    JC-->>Orch: external reference
-    API-->>User: Queued + Test Desk execution ID
+    User->>API: Run all(application, environment, revision)
+    API->>C: create idempotent Application Run
+    C->>B: resolve Regression Baseline + fingerprint
+    B-->>C: immutable Baseline reference
 
-    loop observe queue/build
-        JC->>J: inspect queue/build
-        J-->>JC: native state and build ID
-        JC-->>Orch: normalized lifecycle observation
+    loop each configured UI/Integration suite
+        C->>S: persist queued Source Test Run + attempt
+        C->>P: resolve allow-listed profile
+        alt profile and dispatch valid
+            C->>J: submit(testRunId + attempt idempotency key)
+            J-->>C: queue ID / external reference
+            C->>S: attach External Execution
+        else dispatch rejected or failed
+            C->>S: complete child as Unknown + Ingestion Error
+        end
     end
 
-    J->>A: publish manifest, reports, evidence
-    JC->>I: collect terminal build artifacts
-    I->>A: fetch and verify declared artifacts
-    I->>I: validate manifest and adapt by Test Type
-    I->>DB: persist normalized results and evidence metadata
-    I-->>Orch: Passed / Failed / Error
-    User->>API: read execution
-    API->>DB: load normalized result
-    API-->>User: type-specific workspace model
+    API-->>User: Application Run + every child dispatch result
 ```
 
-Submission uses the Test Desk execution ID as an idempotency/correlation key.
-Queue item ID and build ID are both persisted because Jenkins may spend
-significant time queued before assigning a build.
+Already-created Jenkins runs are not rolled back when another child dispatch
+fails. The Application Run exposes partial dispatch and supports retrying one
+failed child with a new attempt.
 
-## Versioned Result Manifest
+## Source Test Run ingestion sequence
 
-Each Jenkins build publishes one manifest per Test Run. A single umbrella
-pipeline may produce three manifests, but Test Desk ingests them as distinct
-typed runs.
+```mermaid
+sequenceDiagram
+    participant C as Coordinator
+    participant J as Jenkins connector
+    participant A as Managed artifact storage
+    participant I as Result ingestor
+    participant T as UI / Integration adapter
+    participant S as Result store
+    participant R as Regression comparator
 
-Illustrative shape:
+    loop observe queue/build
+        C->>J: inspect external reference
+        J-->>C: queue/build identity + native state
+        C->>S: update lifecycle and native metadata
+    end
+
+    J-->>I: authenticated terminal artifact namespace
+    I->>A: fetch manifest published last
+    I->>I: validate provenance, identity, completeness, hashes
+    I->>T: normalize declared report and sanitized evidence
+    T-->>I: normalized entries + ingestion assessment
+    I->>S: persist immutable ingestion revision
+    I-->>C: Completed + outcome + ingestion
+
+    alt every required Regression input terminal
+        C->>R: compare pinned candidate runs with Baseline
+        R->>S: persist derived Regression Test Run
+    end
+```
+
+Polling is the reconciliation fallback even if a webhook accelerates
+observation. Ingestion is idempotent by Test Run ID, attempt, manifest digest,
+and ingestion revision.
+
+## Versioned Source Result Manifest
+
+Every Jenkins Source Test Run publishes one final manifest. An umbrella
+pipeline may execute several suites, but each typed Test Run has a distinct
+manifest and identity.
+
+Illustrative contract:
 
 ```json
 {
   "schemaVersion": "1.0",
-  "executionId": "exec_01J...",
+  "complete": true,
+  "generatedAt": "2026-08-01T13:45:22Z",
+  "applicationRunId": "ar_01K...",
+  "testRunId": "tr_01K...",
+  "attempt": 1,
   "applicationId": "checkout-web",
+  "suiteId": "checkout-api",
   "testType": "INTEGRATION",
   "environment": "qa",
   "revision": "a13f9c2",
-  "framework": "rest-assured-junit5",
+  "selectionFingerprint": "sha256:...",
+  "compatibilityFingerprint": "sha256:...",
+  "producer": {
+    "name": "checkout-api-tests",
+    "version": "2.8.1",
+    "reportContract": "rest-assured-junit5@1"
+  },
   "reports": [
     {
       "format": "junit-xml",
+      "schemaVersion": "junit-10",
       "path": "reports/integration/results.xml",
-      "sha256": "..."
+      "sha256": "...",
+      "sizeBytes": 42819
     }
   ],
   "evidence": [
     {
       "kind": "sanitized-http-exchange",
-      "path": "evidence/payments-authorize.json",
-      "resultId": "payments-authorize"
+      "path": "evidence/payments-authorize.sanitized.json",
+      "resultIdentity": "checkout-web/checkout-api/payments-authorize/default",
+      "sha256": "...",
+      "sizeBytes": 1832,
+      "redaction": "sanitized"
     }
   ]
 }
 ```
 
-Required ingestion checks:
+### Publication and validation
 
-- schema version is supported;
-- execution, application, type, environment, and revision match the dispatch;
-- every declared path stays within the build artifact namespace;
-- hashes match when supplied;
-- report and evidence sizes remain within configured limits;
-- stable result IDs are unique within the run;
-- evidence is redacted or quarantined before user access.
-
-Validation failure produces `Error`, not `Failed`.
+- Reports and sanitized evidence are uploaded first; the final manifest is
+  published last as the atomic completion marker.
+- Test Desk retrieves artifacts only through the authenticated External
+  Execution namespace and persists the manifest digest and provenance.
+- Every report/evidence hash and size is required.
+- Schema, Application Run, Test Run, attempt, Application, suite, type,
+  Environment, revision, selection, and fingerprint must match dispatch.
+- Paths are normalized and remain inside the build artifact namespace.
+- Result Identities must be unique within a run and valid in their
+  Application/Test Suite namespace.
+- Unsupported schema, identity mismatch, path escape, digest mismatch, or
+  missing required report produces `Ingestion = Error`.
+- A profile may require evidence kinds, but missing optional evidence does not
+  invalidate an otherwise trustworthy report.
 
 ## Type adapters
 
-The ingestor delegates format-specific parsing to adapters behind a common
-interface:
+Adapters implement:
 
 ```text
-normalize(manifest, reportFiles, baseline?) -> NormalizedTestRun
+normalize(manifest, reportFiles, sanitizedEvidence)
+  -> NormalizedSourceTestRun
 ```
 
 ### UI adapter
 
-Maps suites, browser journeys, and ordered steps. Screenshots, Playwright
-traces, videos, console output, and network captures are linked to the
-smallest applicable result entry. A missing screenshot does not invalidate an
-otherwise valid report unless the profile declares it required.
+Maps suites, journeys, and ordered steps. Screenshots, Playwright traces,
+videos, sanitized console output, and network captures attach to the smallest
+applicable Result Entry.
 
 ### Integration adapter
 
 Maps suites and cases from JUnit XML or another configured report. Sanitized
-HTTP exchanges and contract diffs are evidence, not opaque message strings.
-Transport errors remain assertion failures only when the runner produced a
-valid test case result; missing infrastructure produces `Error`.
+HTTP exchanges and contract diffs are Evidence, not opaque message strings.
+A transport failure is an assertion failure only when the runner emitted a
+trustworthy case result.
 
-### Regression adapter
+## Regression comparison
 
-Resolves a pinned baseline before execution or comparison, matches entries by
-stable identity, and emits:
+Regression is produced by:
 
-- new failure;
+```text
+compare(regressionPolicy, candidateSourceRuns, pinnedBaseline)
+  -> NormalizedRegressionTestRun
+```
+
+### Baseline resolution
+
+The Baseline resolver evaluates the Regression Policy at Application Run
+creation and persists:
+
+- resolved Baseline Application Run ID and Source Test Run IDs;
+- Environment and revision;
+- Compatibility Fingerprint;
+- selection policy and resolution timestamp.
+
+`Latest successful` is only a lookup policy. Once resolved, the Baseline is
+immutable. A candidate is incompatible when Environment, suite configuration,
+dataset, framework/report contract, or Regression Policy identity differs.
+
+### Comparison categories
+
+The comparator emits distinct categories:
+
+- new blocking failure;
 - persistent failure;
 - fixed;
 - unchanged;
-- unexecuted/missing.
+- added case;
+- removed case;
+- intentionally not selected;
+- missing or invalid input.
 
-The resolved baseline run ID, revision, and selection policy are persisted.
-Display names are not used as identity.
+Matching uses Result Identity, never display name or run-local ID. Fully valid
+input produces `Ingestion = Valid`; outcome follows the policy's blocking-delta
+rules. Partial or invalid required input keeps `Outcome = Unknown`.
+
+Candidate Source Test Run IDs are frozen when the Regression Test Run is
+created. Retrying a Source Test Run cannot mutate an existing comparison;
+`Recompare` creates a new Regression Test Run attempt with a newly pinned
+candidate set and the already resolved immutable Baseline. If policy version,
+candidate IDs, and Baseline IDs have not changed, the operation resolves
+idempotently to the existing comparison.
 
 ## Storage and retention
 
-- Relational result storage holds execution metadata, normalized entries,
-  counts, comparison categories, and evidence metadata.
-- Object storage holds reports, screenshots, traces, videos, sanitized HTTP
-  exchanges, and large diffs.
-- Jenkins URLs are retained as external references, not as the only path to
-  evidence.
-- Retention policies may differ by evidence kind and environment.
-- Deleting an artifact leaves an auditable tombstone so the result does not
-  silently appear incomplete.
+- Relational storage holds Application Runs, Test Runs, state axes, External
+  Executions, manifests, normalized entries, comparison categories, Baseline
+  references, and Evidence metadata.
+- Object storage holds immutable manifests, reports, sanitized evidence, and
+  large comparison diffs.
+- Raw artifacts that may contain secrets are encrypted and quarantined
+  separately. They are never linked from the normal result workspace.
+- Jenkins URLs remain external references, not the only path to result history.
+- Retention policies differ by artifact class and Environment.
+- Deletion leaves an auditable tombstone so a result does not silently appear
+  complete.
 
 ## Reliability and reconciliation
 
-- Submission is idempotent for one Test Desk execution ID.
-- Observation is repeatable and safe after a Test Desk restart.
-- Webhooks may accelerate updates, but polling remains the reconciliation
-  fallback.
-- A terminal normalized result is immutable; a corrected report creates a new
-  ingestion revision or rerun rather than rewriting history silently.
-- Timeout before a reliable report produces `Error`.
-- Cancellation records both the requested action and the observed Jenkins
-  outcome.
+- Application Run creation and Source Test Run submission are independently
+  idempotent.
+- Queue ID and build ID are both persisted.
+- Observation and ingestion are repeatable after Test Desk restarts.
+- Terminal normalized results are immutable; corrections create a new
+  ingestion revision or Test Run attempt.
+- Timeout before trustworthy output completes lifecycle with
+  `Outcome = Unknown` and `Ingestion = Error`.
+- Cancellation records request, connector response, observed Jenkins outcome,
+  and any output collected before cancellation.
+- Regression starts at most once for one policy-version/candidate/Baseline
+  tuple.
 
 ## Security
 
 - Jenkins credentials and job mapping live in server-managed profiles.
-- Job and parameter values are allow-listed.
-- Artifact paths are normalized and cannot escape the build namespace.
-- Evidence access is authorized against Application and Environment.
-- HTTP captures, logs, and reports pass through configurable redaction.
-- User-facing runner output is bounded and sanitized.
-- Audit events cover trigger, cancellation, baseline selection, ingestion
-  validation failure, evidence access, and retention deletion.
+- Jobs and parameters are allow-listed.
+- Artifact provenance and digests are verified before parsing.
+- Evidence access is authorized by Application and Environment.
+- Normal users receive only sanitized derivatives.
+- Quarantined raw evidence requires a separate audited support role and
+  time-bounded access.
+- Runner output is bounded and sanitized.
+- Audit events cover Application Run creation, dispatch, retry, cancellation,
+  Baseline resolution, ingestion validation, comparison, evidence access, and
+  retention deletion.
 
-## Delivery boundary
+## Target API shape
 
-This architecture deliberately leaves implementation for later slices:
+```text
+POST /api/v1/application-runs
+GET  /api/v1/application-runs/{applicationRunId}
+POST /api/v1/application-runs/{applicationRunId}/test-runs/{testRunId}/retry
+POST /api/v1/test-runs/{testRunId}/cancel
+GET  /api/v1/test-runs/{testRunId}/evidence
+```
 
-1. Result Manifest schema and fixture validation.
-2. Durable execution/external-reference persistence.
-3. Jenkins connector submission and reconciliation.
-4. One end-to-end adapter per Test Type.
-5. Artifact storage, authorization, redaction, and retention.
-6. Regression baseline policy and comparison service.
+Creation accepts Application, Environment, revision, and optional suite/type
+selection. Responses expose Application Run coordination plus every child Test
+Run's three state axes and provenance.
+
+## Delivery sequence
+
+1. Migrate domain vocabulary and API read models to Application Run, Test Run,
+   three Test Types, and three state axes.
+2. Define Result Manifest JSON Schema and executable contract fixtures.
+3. Persist Application Runs, Test Runs, External Executions, observations, and
+   ingestion revisions.
+4. Implement Jenkins submission/reconciliation and one UI Source Test Run.
+5. Add Integration adapter plus sanitized HTTP Evidence.
+6. Implement Baseline resolver, Compatibility Fingerprint, and Regression
+   comparator.
+7. Add type aggregation, partial-dispatch UX, authorization, retention, and
+   operational hardening.

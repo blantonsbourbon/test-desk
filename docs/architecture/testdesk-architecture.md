@@ -1,6 +1,14 @@
 # Test Desk Architecture
 
-This document describes the current `v0.3.0` architecture and the seams that future contributors extend. It distinguishes the implemented in-memory simulation from the production implementations planned in the MVP roadmap.
+This document describes the current `v0.3.0` architecture and the seams present
+in the implemented in-memory simulation. Forward-looking instructions live
+only in the accepted target architecture and roadmap linked below.
+
+> Current-state record: the implemented model below still uses the earlier
+> simulation vocabulary. It is not the target implementation specification.
+> The accepted target is documented in
+> [Application Runs and Jenkins result ingestion](jenkins-test-results.md), and
+> its migration order is defined in [the roadmap](../roadmap.md).
 
 ## Design principles
 
@@ -8,7 +16,8 @@ This document describes the current `v0.3.0` architecture and the seams that fut
 - Test meaning (`TestType`/`DefinitionKind`) is independent from dispatch (`ExecutionConnector`).
 - The client selects entries and an environment. The server resolves the `ExecutionProfile`, connector, command, job, and credentials.
 - A Catalog Revision is immutable and every execution is pinned to one revision.
-- Adapters sit at explicit seams. The public execution flow should not change when a framework or external execution system is added.
+- Within the v0.3 contract, adapters sit at explicit seams so adding a framework
+  or connector does not leak infrastructure choices into the request.
 - The `ExecutionOrchestrator` is the deep application module: callers learn a small interface while polling, state mapping, cancellation, and result normalization remain inside it.
 
 ## 1. System context and ownership
@@ -116,7 +125,9 @@ flowchart LR
 | `CatalogEntryDetails` | Keep framework-specific data out of the generic entry | BDD details or generic description |
 | `CatalogService.requestSync` | Replace catalog and revision as one logical update | Simulated delayed reload |
 
-Adding a framework should require a new adapter, details type, profile configuration, and contract tests. It should not require changing `CatalogController`, `ExecutionController`, or the frontend request shape.
+Within v0.3, adding a framework requires a new adapter, details type, profile
+configuration, and contract tests. The target Application Run migration
+deliberately replaces this frontend and execution request shape.
 
 ## 3. Execution module and connector seam
 
@@ -154,7 +165,10 @@ flowchart LR
 | `ExecutionConnector` | `id`, `submit`, `inspect`, `cancel` | `inspect` is repeatable; `submit` returns an opaque external reference; credentials remain server-side |
 | `TestExecution` | `markRunning`, `complete`, `markRunnerError`, `cancel` | Lifecycle transitions and aggregate status are normalized in one place |
 
-The current implementation schedules `inspect` every 150 ms against the simulation connector. The production implementation should move execution state, external references, connector observations, and result artifacts to durable storage without changing the REST contract.
+The current implementation schedules `inspect` every 150 ms against the
+simulation connector. The accepted target moves coordination, external
+references, observations, and normalized result artifacts to durable storage
+through the explicit API migration in the roadmap.
 
 ## 4. Request-to-result sequence
 
@@ -227,7 +241,9 @@ stateDiagram-v2
 | `CANCELLED` | Explicit user cancellation | Results are marked cancelled |
 | `SKIPPED` | Connector reports a skipped child result | Connector contract decides aggregate policy |
 
-Scenario outlines expand to one result per example. Plain entries receive one aggregate result. Future API and integration adapters can publish case results without changing the `ExecutionEntryResult` contract.
+In v0.3, Scenario Outlines expand to one result per Example and plain entries
+receive one aggregate result. The target Result Entry contract supersedes this
+run-local representation.
 
 ## 6. Extension checklist
 

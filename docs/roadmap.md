@@ -1,176 +1,168 @@
-# Test Desk Roadmap
+# Test Desk target roadmap
 
-This roadmap is dependency-driven rather than date-driven. Dates should be added only after an owner and capacity are known. The status reflects the repository at `v0.3.0`.
+This roadmap moves the current `v0.3.0` generic execution skeleton to the
+accepted UI, Integration, and derived Regression model. It is dependency-driven
+rather than date-driven. BDD remains a Definition Style and is not a delivery
+phase or Test Type.
 
 ## Roadmap at a glance
 
 ```mermaid
 flowchart LR
-    P0["P0 — Generic foundation\nDONE · v0.3.0"]
-    G0{{"Gate A\nGeneric contract proven"}}
-    P1["P1 — Durable execution\nNEXT · v0.4.0 proposed"]
-    G1{{"Gate B\nRestart + idempotency proven"}}
-    P2["P2 — Ansible BDD\nPLANNED · v0.5.0 proposed"]
-    G2{{"Gate C\nPinned BDD run proven"}}
-    P3["P3 — Jenkins non-BDD\nPLANNED · v0.6.0 proposed"]
-    G3{{"Gate D\nAPI + integration results proven"}}
-    P4["P4 — Multi-type product polish\nPARTIAL · v0.7.0 proposed"]
-    G4{{"Gate E\nUser-facing MVP acceptance"}}
-    P5["P5 — Production hardening\nPLANNED"]
+    P0["P0 · Current foundation<br/>DONE · v0.3.0"]
+    G0{{"Gate A<br/>current behavior characterized"}}
+    P1["P1 · Domain migration<br/>NEXT"]
+    G1{{"Gate B<br/>new contracts accepted"}}
+    P2["P2 · Durable coordination<br/>PLANNED"]
+    G2{{"Gate C<br/>restart + idempotency proven"}}
+    P3["P3 · Jenkins source runs<br/>PLANNED"]
+    G3{{"Gate D<br/>UI + Integration ingested"}}
+    P4["P4 · Regression comparison<br/>PLANNED"]
+    G4{{"Gate E<br/>baseline comparison trusted"}}
+    P5["P5 · Result workspaces<br/>PLANNED"]
+    G5{{"Gate F<br/>desktop product accepted"}}
+    P6["P6 · Production hardening<br/>PLANNED"]
 
-    P0 --> G0 --> P1 --> G1
-    G1 --> P2 --> G2
-    G1 --> P3 --> G3
-    G2 --> P4
-    G3 --> P4
-    P4 --> G4 --> P5
-
-    classDef done fill:#d8f3dc,stroke:#2d6a4f,color:#081c15
-    classDef next fill:#fff3bf,stroke:#b08900,color:#3d3200
-    classDef planned fill:#e7f5ff,stroke:#1971c2,color:#102a43
-    classDef partial fill:#f3d9fa,stroke:#862e9c,color:#2b0a3d
-    classDef gate fill:#f1f3f5,stroke:#495057,color:#212529
-    class P0 done
-    class P1 next
-    class P2,P3,P5 planned
-    class P4 partial
-    class G0,G1,G2,G3,G4 gate
+    P0 --> G0 --> P1 --> G1 --> P2 --> G2 --> P3 --> G3
+    G3 --> P4 --> G4 --> P5 --> G5 --> P6
 ```
-
-P2 and P3 can be developed in parallel after P1, but both need the durable execution contract before production credentials and external references are introduced.
 
 ## Delivery plan
 
-| Phase | Status | Objective | Main deliverables | Exit gate |
-|---|---|---|---|---|
-| P0 Generic foundation | Done | Prove that catalog meaning and dispatch are independent | `CatalogEntry`, `TestGroup`, typed details, `CatalogDefinitionAdapter`, `ExecutionProfile`, `ExecutionConnector`, `ExecutionOrchestrator`, simulation profile/adapter, generic UI/API, Gradle migration | BDD catalog and simulation execution work through the generic `entryIds` contract |
-| P1 Durable execution | Next | Make execution state recoverable and safe to retry | Execution repository, result repository, external-run record, observation record, idempotency key, timeout policy, restart reconciliation, durable artifacts | Kill/restart Test Desk during queued/running execution without losing or duplicating the external run |
-| P2 Ansible BDD | Planned | Replace simulation with a real pinned BDD path | Git revision checkout, Ansible profile, allow-listed command/controller adapter, environment mapping, per-scenario/example parser, cancellation mapping | A BDD scenario and outline run against the pinned commit and show opaque external reference plus case results |
-| P3 Jenkins non-BDD | Planned | Prove the same execution model for different test meaning | API catalog adapter, integration catalog adapter, Jenkins profiles, queue/build correlation, JUnit/result artifact parser, build URL | API and integration entries run through Jenkins with aggregate and child-case results |
-| P4 Product polish | Partial | Make type differences visible without coupling the client to connectors | Test Type filter, compatibility preview, mixed-profile explanation, empty/error states, polling UX, audit display, keyboard paths | User can discover, select, run, cancel, and understand every supported state without connector knowledge |
-| P5 Production hardening | Planned | Operate safely for multiple teams | Authentication/RBAC, secret manager integration, audit log, metrics/traces, rate limits, retention, migration/runbooks, load and failure tests | Security, observability, recovery, and operational readiness sign-off |
+| Phase | Objective | Main deliverables | Exit gate |
+|---|---|---|---|
+| P0 Current foundation | Preserve a characterized starting point | Generic Catalog Entry, profile/connector seams, simulation connector, current API/UI tests | Existing test suite passes and current behavior is documented |
+| P1 Domain migration | Establish the accepted language and contracts before external integration | `UI | INTEGRATION | REGRESSION`, Definition Style, Application Run, Test Run, three state axes, Result Identity, compatibility rules, API migration plan | Contract fixtures cover all new invariants without requiring Jenkins |
+| P2 Durable coordination | Make Application Runs safe across retry and restart | Application/Test Run repositories, External Execution, observation and ingestion revisions, partial dispatch, per-child idempotency, timeout/cancellation policy | Restart and retry never duplicate or lose a child run |
+| P3 Jenkins Source Test Runs | Ingest trustworthy UI and Integration output | Versioned Result Manifest schema, Jenkins queue/build correlation, UI adapter, Integration adapter, sanitized Evidence, manifest contract tests | One UI and one Integration suite run through Jenkins with valid, partial, invalid, and cancelled cases |
+| P4 Regression comparison | Produce a trustworthy derived Regression Test Run | Regression Policy, Baseline resolver, Compatibility Fingerprint, cross-revision Result Identity, comparison categories, blocking rules | Deterministic comparison handles new, persistent, fixed, added, removed, not-selected, and missing cases |
+| P5 Result workspaces | Deliver the desktop diagnosis experience | Application Run context, type aggregation, multiple-suite selector, three state axes, type-specific result/evidence panes, shareable URLs | A user diagnoses each supported state without opening Jenkins |
+| P6 Production hardening | Operate safely for multiple teams | RBAC, secret management, audit, metrics/traces, quarantine, retention, migration/runbooks, load/failure tests | Security, recovery, and operational readiness sign-off |
 
-## Workstreams
+## Dependency map
 
 ```mermaid
 flowchart TB
-    subgraph DOMAIN["Domain and catalog"]
-        D1["Stable IDs + revision semantics"]
-        D2["API catalog adapter"]
-        D3["Integration catalog adapter"]
-        D4["Type-aware details"]
+    subgraph DOMAIN["Domain and contracts"]
+        D1["Application Run + Test Run"]
+        D2["Lifecycle / Outcome / Ingestion"]
+        D3["Cross-revision Result Identity"]
+        D4["Manifest JSON Schema"]
         D1 --> D2 --> D3 --> D4
     end
 
-    subgraph EXEC["Execution platform"]
-        E1["Durable execution state"]
-        E2["Idempotency + recovery"]
-        E3["Ansible connector"]
-        E4["Jenkins connector"]
+    subgraph EXEC["Execution and ingestion"]
+        E1["Durable coordination"]
+        E2["Jenkins connector"]
+        E3["UI adapter"]
+        E4["Integration adapter"]
         E1 --> E2
         E2 --> E3
         E2 --> E4
     end
 
-    subgraph UX["Frontend and user experience"]
-        U1["Generic catalog and run flow"]
-        U2["Test Type filter"]
-        U3["Compatibility and error UX"]
-        U4["Audit and external links"]
-        U1 --> U2 --> U3 --> U4
+    subgraph REG["Regression"]
+        R1["Baseline resolver"]
+        R2["Compatibility Fingerprint"]
+        R3["Comparator + blocking rules"]
+        R1 --> R2 --> R3
     end
 
-    subgraph OPS["Platform and quality"]
-        O1["Contract test matrix"]
-        O2["Auth + secrets"]
-        O3["Metrics + audit"]
-        O4["Recovery/load testing"]
-        O1 --> O2 --> O3 --> O4
+    subgraph UX["Desktop product"]
+        U1["Application Run context"]
+        U2["Type aggregation + suite selection"]
+        U3["Three result workspaces"]
+        U1 --> U2 --> U3
     end
 
-    D1 -. shared contract .-> E1
-    D3 -. result shape .-> E4
-    E2 -. stable state .-> U3
-    E3 -. external reference .-> U4
-    E4 -. external reference .-> U4
-    O1 -. verifies .-> E2
-    O1 -. verifies .-> E3
-    O1 -. verifies .-> E4
+    D4 --> E1
+    E3 --> R1
+    E4 --> R1
+    R3 --> U3
+    E1 --> U1
 ```
 
-## Phase detail and acceptance gates
+## Phase acceptance gates
 
-### P0 — Generic foundation (done)
+### P0 — Current foundation
 
-- Catalog responses use `groups`, `entries`, `testType`, `framework`, `definitionKind`, and generic statistics.
-- Execution requests use `entryIds`, explicit `environment`, optional `revisionCommit`, and `origin`.
-- The profile registry rejects unsupported type/framework/environment combinations before dispatch.
-- The simulation connector returns queued/running/terminal observations and opaque external references.
-- Scenario outlines expand into `caseId`/`caseValues` results; plain entries receive one aggregate result.
-- Gradle wrapper, backend tests, Angular production build, and worker syntax checks are green.
+- Keep the current simulation path green until replacement slices exist.
+- Freeze representative API and result fixtures before changing vocabulary.
+- Mark current-architecture documents as current-state records, not target
+  implementation instructions.
 
-### P1 — Durable execution (next)
+### P1 — Domain migration
 
-Recommended storage model:
+- `TestType` has exactly `UI`, `INTEGRATION`, and `REGRESSION`.
+- BDD is represented only as optional Definition Style.
+- One Application Run pins Application, Environment, revision, trigger, and
+  Baseline resolution context.
+- UI/Integration Source Test Runs and derived Regression Test Runs share the
+  common Test Run envelope.
+- Lifecycle, Outcome, and Ingestion cannot overwrite one another.
+- Result Identity is namespaced and stable across revisions.
+- Migration fixtures document compatibility for existing clients and data.
 
-| Record | Minimum fields | Why it exists |
-|---|---|---|
-| `execution` | id, source, revision, environment, profile, origin, lifecycle timestamps | Reconstruct the request and lifecycle after restart |
-| `external_execution` | execution id, connector, reference, URL, submitted/observed timestamps | Reconcile an external run without resubmitting |
-| `execution_result` | execution id, entry id, case id, status, duration, error, artifact reference | Query normalized results independently from the connector |
-| `connector_observation` | external reference, observed state, raw payload/artifact, observed at | Audit state mapping and troubleshoot drift |
-| `idempotency_key` | request key, execution id, created at, expiry | Make retries return the original execution |
+### P2 — Durable coordination
 
-Exit tests:
+1. Submit one `Run all`; persist every child dispatch outcome.
+2. Allow one child to fail dispatch without rolling back already-started runs.
+3. Retry one failed child as a new attempt without duplicating successful
+   siblings.
+4. Kill Test Desk after Jenkins submission; restart and reconcile queue/build.
+5. Receive terminal observations and manifests more than once without mutating
+   immutable results.
+6. Cancel queued/running children and retain any trustworthy collected output.
 
-1. Submit once, retry the same request, and observe one external reference.
-2. Kill the application after submit; restart and reconcile the external run.
-3. Receive a terminal observation twice; do not duplicate results or mutate a terminal execution.
-4. Mark an unobservable external run as `ERROR` with an actionable reason after timeout.
+### P3 — Jenkins Source Test Runs
 
-### P2 — Ansible BDD (planned)
+- Resolve only allow-listed Jenkins profiles and parameters.
+- Persist queue item and build references through the queue-to-build transition.
+- Publish reports/evidence first and the final manifest last.
+- Validate identity, provenance, schema, hashes, sizes, and path boundaries.
+- Ingest UI journeys/steps and Integration suites/cases.
+- Expose only sanitized Evidence to normal users.
+- Cover valid, partial, missing, malformed, oversized, mismatched, cancelled,
+  and Jenkins-non-test-failure fixtures.
 
-Implementation order:
+### P4 — Regression comparison
 
-1. Add server-managed `bdd-qa-ansible` and `bdd-dev-ansible` profiles.
-2. Pass execution ID, pinned commit, environment, and `selectionRef` as structured arguments.
-3. Keep command templates and credentials outside the API and catalog.
-4. Parse a stable machine-readable artifact into `ExecutionEntryResult` values.
-5. Map cancellation capability explicitly; unsupported cancellation becomes a visible connector outcome.
+- Resolve Baseline once at Application Run creation and persist it immutably.
+- Reject incompatible candidate/Baseline fingerprints.
+- Compare only by namespaced Result Identity.
+- Distinguish new failure, persistent failure, fixed, unchanged, added,
+  removed, intentionally not selected, and missing/invalid.
+- Keep Outcome `Unknown` for partial or invalid required input.
+- Apply versioned blocking-delta rules deterministically.
+- Start at most one comparison per policy/candidate/Baseline tuple.
 
-### P3 — Jenkins non-BDD (planned)
+### P5 — Result workspaces
 
-Implementation order:
+- Show Application Run coordination separately from Test Outcomes.
+- Aggregate zero or more suites without presenting one misleading build.
+- Preserve type, suite, Test Run, and Result Entry in the URL.
+- Keep failed evidence adjacent to its Result Entry.
+- Expose Regression provenance and Compatibility Fingerprint.
+- Provide keyboard access, visible focus, live-state announcements, and
+  reduced-motion support at desktop viewports of 1280 CSS pixels and wider.
 
-1. Add API and integration catalog adapters with stable revision-relative selectors.
-2. Add profiles that map each type/framework/environment to configured Jenkins jobs.
-3. Persist queue item and build references through the queue-to-build transition.
-4. Correlate the build with Test Execution ID and make submission idempotent.
-5. Parse JUnit or another configured artifact; job failure without trustworthy results maps to `ERROR`.
+### P6 — Production hardening
 
-### P4 — Product polish (partial)
+- Authenticate users and authorize Application/Environment/Evidence access.
+- Store connector credentials in a secret manager.
+- Separate sanitized Evidence from encrypted quarantined raw artifacts.
+- Audit creation, dispatch, retry, cancellation, Baseline resolution,
+  ingestion, comparison, evidence access, and retention deletion.
+- Measure queue latency, execution duration, ingestion lag, result
+  completeness, connector errors, and comparison duration.
+- Prove restore, retention, migration, load, and failure runbooks.
 
-Remaining product work:
+## Explicitly deferred
 
-- Add a Test Type filter and type-aware empty/detail states.
-- Explain why a selection resolves to one profile, and why mixed profiles must be split.
-- Show polling, cancellation, timeout, missing-result, and infrastructure-error states with recovery guidance.
-- Expose the opaque external reference and URL without exposing connector configuration or credentials.
-
-### P5 — Production hardening (planned)
-
-- Authenticate users and authorize source/environment access.
-- Store connector credentials in a secret manager, never in Catalog or request payloads.
-- Add audit events for origin, actor, profile resolution, dispatch, cancellation, and result reconciliation.
-- Add metrics for queue latency, execution duration, connector error rate, result completeness, and reconciliation lag.
-- Define retention and migration policies for executions, artifacts, and observations.
-
-## Release mapping
-
-| Release | Scope | Status |
-|---|---|---|
-| `v0.3.0` | Generic foundation, simulation connector, Gradle/testdesk migration, documentation | Released |
-| `v0.4.0` | Durable execution and connector contract matrix | Proposed |
-| `v0.5.0` | Ansible BDD vertical slice | Proposed |
-| `v0.6.0` | Jenkins API/integration vertical slice | Proposed |
-| `v0.7.0` | Multi-type UX and production readiness work | Proposed |
+- Arbitrary Jenkins job or parameter configuration from the product UI.
+- Cross-Application workflow orchestration.
+- Mobile and touch-specific result workspaces.
+- Treating BDD as a Test Type.
+- Parsing Jenkins console text as the result protocol.
+- Ansible-specific expansion until the Jenkins Source Test Run path proves the
+  connector-neutral contract.

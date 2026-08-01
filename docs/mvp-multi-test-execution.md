@@ -5,9 +5,11 @@
 > `UI | Integration | Regression`; BDD is a Definition Style rather than a Test
 > Type. See
 > [ADR-0004](adr/0004-use-three-test-types-and-normalize-jenkins-output.md),
+> [ADR-0005](adr/0005-group-test-runs-and-derive-regression-comparisons.md),
 > [the result workspace design](design/test-results-workspaces.md), and
 > [the target Jenkins result architecture](architecture/jenkins-test-results.md).
-> Concrete migration and implementation are intentionally deferred.
+> The contents below are retained only as a historical `v0.3.0` design record;
+> they must not be used as target implementation instructions.
 
 ## Decision
 

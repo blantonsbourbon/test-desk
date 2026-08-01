@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-01
 - Supersedes: the `BDD | API | Integration` classification examples in ADR-0003
+- Refined by: ADR-0005 for Application Run, Regression dependency, and state semantics
 
 ## Context
 
@@ -38,10 +39,12 @@ Test Desk adopts exactly three Test Types:
 BDD is represented separately as an optional Definition Style. Framework is
 also separate metadata. Neither changes the Test Type.
 
-An Application may have zero or more suites of every Test Type. Its overview
-groups the three types under the same application and revision, but each type
-keeps its own run identity, lifecycle, counts, duration, Jenkins build
-reference, result hierarchy, and evidence.
+An Application may have zero or more UI/Integration suites and Regression
+policies. Its overview groups all three Test Types under one Application Run,
+but each type keeps its own Test Run identity, state, counts, duration, result
+hierarchy, and evidence. UI and Integration Test Runs may reference Jenkins
+builds; a derived Regression Test Run references its candidate Source Test
+Runs and Baseline and therefore need not own a Jenkins build.
 
 ### Jenkins result contract
 
@@ -55,29 +58,32 @@ the same connector-neutral model:
 ```text
 TestRun
   id
+  applicationRunId
   applicationId
   testType                 UI | INTEGRATION | REGRESSION
   environment
   revision
-  status
-  externalExecution        Jenkins queue/build reference and URL
+  lifecycle                QUEUED | RUNNING | COLLECTING | COMPLETED | CANCELLED
+  outcome                  PASSED | FAILED | UNKNOWN
+  ingestionState           PENDING | VALID | PARTIAL | ERROR
+  externalExecution        optional Jenkins queue/build reference and URL
   startedAt / finishedAt / duration
   counts
   resultEntries[]
   evidence[]
+  sourceRunIds             only when testType = REGRESSION
   baseline                 only when testType = REGRESSION
 ```
 
-The normalized result status has the following semantics:
+The normalized state has three independent axes:
 
-- `Passed`: a valid report was ingested and contains no failed assertion.
-- `Failed`: a valid report was ingested and contains at least one failed
-  assertion or regression.
-- `Error`: dispatch, infrastructure, collection, validation, or parsing failed,
-  so Test Desk has no reliable result.
-- `Cancelled`: the queue item or build was deliberately aborted.
-- `Skipped`: a child result was not executed; it is not a top-level substitute
-  for `Error`.
+- `Lifecycle` describes progress through queueing, execution, collection, and
+  completion independently of outcome.
+- `Outcome = Passed | Failed` is set only from trustworthy normalized results;
+  otherwise it remains `Unknown`.
+- `Ingestion State` distinguishes pending, valid, partial, and invalid output.
+- `Skipped` remains a Result Entry status; it is not a top-level substitute for
+  `Unknown` or `Ingestion State = Error`.
 
 Jenkins console output remains a bounded, sanitized diagnostic escape hatch.
 It is not parsed as the primary result protocol.
@@ -90,9 +96,11 @@ captures, diffs, and raw reports is stored in managed artifact storage.
 Metadata and authorized links remain in Test Desk so result history can outlive
 Jenkins artifact retention.
 
-Regression comparison requires stable case identity plus an explicit, pinned
-baseline. “Latest successful” may be offered as a selection policy, but the
-resolved baseline run and revision must be recorded before comparison begins.
+Regression comparison requires a namespaced cross-revision Result Identity
+plus explicit candidate Source Test Runs and a pinned Baseline. “Latest
+successful” may be offered as a selection policy, but the resolved baseline
+runs, revision, and Compatibility Fingerprint must be recorded before
+comparison begins.
 
 ## Consequences
 

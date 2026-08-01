@@ -1,17 +1,23 @@
-# Generic catalog and execution extension points
+# Target extension points for catalog, execution, and comparison
 
-This document is the contributor guide for adding a test framework, test type, or execution system without changing the public execution flow.
+This contributor guide describes the accepted target seams. The current
+`v0.3.0` code still uses the earlier simulation vocabulary; migration order is
+defined in [the roadmap](../roadmap.md).
 
-## The four independent concerns
+## Independent concerns
 
-| Concern | Current seam | Example |
+| Concern | Target seam | Examples |
 |---|---|---|
-| Definition meaning | `TestType` and `DefinitionKind` | BDD / API / Integration |
-| Framework-specific catalog reading | `CatalogDefinitionAdapter` | Cucumber, Playwright, Postman, JUnit |
-| Dispatch and observation | `ExecutionConnector` | Ansible, Jenkins, simulation |
+| Result family | `TestType` | UI, Integration, Regression |
+| Optional authoring/presentation form | `DefinitionStyle` | BDD |
+| Framework/report interpretation | Catalog and result adapters | Playwright, Rest Assured, Cucumber, JUnit |
+| Dispatch and observation | `ExecutionConnector` | Jenkins, simulation |
 | Request source | `ExecutionOrigin` | UI, REST API, schedule, webhook |
+| Derived comparison | `RegressionPolicy` and comparator | pinned candidate/Baseline comparison |
 
-An `ExecutionProfile` is the server-owned compatibility mapping between a catalog entry, environment, and connector. The client selects entries and an environment; it never selects a connector, command, job, or credential.
+An `ExecutionProfile` is the server-owned compatibility mapping between a Test
+Suite, Environment, framework, and connector configuration. Clients never
+select a connector, command, job, or credential.
 
 ## Catalog flow
 
@@ -22,61 +28,89 @@ Test Source + Catalog Revision
 CatalogDefinitionAdapter.load(...)
         |
         v
-TestGroup -> CatalogEntry -> type-specific details
+Test Suite -> Catalog Entry -> framework/type-specific details
 ```
 
-`CatalogEntry` is the generic selection unit. Its `selectionRef` is opaque and revision-relative, so a connector does not need to understand how a framework locates a definition in Git.
+`CatalogEntry.selectionRef` is opaque and revision-relative. BDD steps are
+optional typed details under Definition Style; they do not create another Test
+Type.
 
-BDD steps and Examples live in `BddCatalogEntryDetails`. New test types should add their own details object rather than adding nullable fields to `CatalogEntry`.
+UI and Integration suites contain executable Catalog Entries. A Regression
+Policy selects candidate Source Test Runs and a Baseline comparison scope; it
+is not disguised as a directly executable browser/API definition.
 
-## Execution flow
+## Application Run flow
 
 ```text
-Execution request
+Application Run request
         |
         v
-ExecutionService validates source/revision/entries
+ApplicationRunCoordinator
         |
-        v
-ExecutionProfileRegistry resolves one profile
+        +--> resolve/pin Baseline
         |
-        v
-ExecutionOrchestrator
+        +--> UI Source Test Runs --------> ExecutionConnector
         |
-        v
-ExecutionConnector.submit / inspect / cancel
+        +--> Integration Source Test Runs -> ExecutionConnector
         |
-        v
-ExecutionEntryResult + optional case results
+        `--> Regression Test Run <-------- normalized candidate results
 ```
 
-The orchestrator is the application-facing module. Controllers and catalog code should not know connector details.
+The coordinator owns partial dispatch, child attempts, Baseline pinning, and
+the dependency that Regression waits for its configured Source Test Runs.
 
-## Result rules
+## State and result rules
 
-- `FAILED` means the test ran and produced a reliable failed assertion.
-- `ERROR` means dispatch, infrastructure, observation, or result parsing could not produce a reliable test result.
-- `CANCELLED` means the execution was explicitly cancelled.
-- An execution can expose one aggregate result per entry or child case results when the framework publishes them.
-- Preserve external references and raw result artifacts in the durable implementation; the common result model is for querying and UI display.
+- Execution Lifecycle is `QUEUED | RUNNING | COLLECTING | COMPLETED |
+  CANCELLED`.
+- Test Outcome is `PASSED | FAILED | UNKNOWN`.
+- Ingestion State is `PENDING | VALID | PARTIAL | ERROR`.
+- Jenkins native status remains External Execution metadata.
+- Result Entry status is `PASSED | FAILED | SKIPPED`.
+- A trustworthy assertion failure sets Outcome to `FAILED`.
+- Missing or invalid required output keeps Outcome `UNKNOWN` and sets
+  Ingestion to `PARTIAL` or `ERROR`.
+- A Regression Outcome is determined by versioned blocking-delta rules only
+  when all required comparison input is valid.
 
-## Adding an adapter
-
-### New catalog/framework adapter
+## Adding a catalog/framework adapter
 
 1. Implement `CatalogDefinitionAdapter`.
-2. Return immutable `TestGroup` and `CatalogEntry` values for one `CatalogRevision`.
-3. Put framework-specific data in a `CatalogEntryDetails` implementation.
-4. Use an opaque, revision-relative `selectionRef`.
-5. Add adapter contract tests for identity, revision handling, and stable entry IDs.
+2. Return immutable suites and entries for exactly one Catalog Revision.
+3. Assign `UI` or `INTEGRATION`; assign BDD only as optional Definition Style.
+4. Put framework-specific details outside the generic entry.
+5. Use an opaque revision-relative `selectionRef`.
+6. Define a stable cross-revision Result Identity namespace.
+7. Add contract fixtures for identity, revision, selection, and parameter keys.
 
-### New execution connector
+## Adding an Execution Connector
 
-1. Implement `ExecutionConnector`.
-2. Map `DispatchCommand` to the external system using server-managed configuration.
-3. Return an opaque `ExternalExecution` reference from `submit`.
-4. Make `inspect` repeatable and map external states into the common lifecycle/result model.
-5. Implement cancellation and idempotency behavior explicitly.
-6. Add connector contract tests using the simulation connector as the deterministic reference.
+1. Implement submit, inspect, and cancel behind the connector seam.
+2. Translate only server-managed profiles into external parameters.
+3. Use Application Run ID, Test Run ID, and attempt as correlation/idempotency
+   values.
+4. Persist queue and build identity as an optional External Execution.
+5. Keep observation repeatable across restart and duplicate notifications.
+6. Deliver the authenticated terminal artifact namespace to the Result
+   Ingestor; do not parse console text into outcomes.
+7. Add connector contract fixtures for queue, run, timeout, cancellation,
+   restart, partial dispatch, and duplicate submission.
 
-The first proving slice intentionally has only the BDD simulation adapter/profile. Adding an API adapter and a Jenkins profile is the next proof that test meaning and dispatch remain independent.
+## Adding a source-result adapter
+
+1. Validate the common Result Manifest before framework parsing.
+2. Parse only declared, hash-verified reports.
+3. Produce normalized Result Entries with stable Result Identities.
+4. Associate only sanitized Evidence with user-visible metadata.
+5. Return an explicit Ingestion assessment independently from Test Outcome.
+6. Cover valid, partial, malformed, missing, mismatched, and oversized input.
+
+## Changing Regression comparison
+
+Regression behavior is versioned through `RegressionPolicy`, not hidden in the
+UI or Jenkins job. A change to identity matching, Compatibility Fingerprint,
+Baseline resolution, comparison categories, or blocking rules requires
+deterministic fixtures and a recorded policy version.
+
+The comparator accepts normalized candidate Source Test Runs plus an immutable
+Baseline. It never reads Jenkins console text or matches by display name.

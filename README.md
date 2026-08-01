@@ -2,12 +2,16 @@
 
 Spring Boot 3 backend and Angular 19 console for an internal, generic Test Catalog and execution console.
 
-The frontend design is documented in [docs/frontend-design.md](docs/frontend-design.md). It includes the screen behavior and the `/api/v1` contract that the backend implements.
+The current `v0.3.0` frontend behavior and `/api/v1` contract are recorded in
+[docs/frontend-design.md](docs/frontend-design.md). This is a migration
+reference rather than the target result experience.
 
 The earlier v0.3 MVP model is retained as a historical design note in
 [docs/mvp-multi-test-execution.md](docs/mvp-multi-test-execution.md).
 
-The contributor seams for catalog adapters, execution connectors, profiles, origins, and normalized results are documented in [docs/architecture/generic-execution.md](docs/architecture/generic-execution.md).
+The target contributor seams for catalog adapters, execution connectors,
+result ingestion, and Regression comparison are documented in
+[docs/architecture/generic-execution.md](docs/architecture/generic-execution.md).
 
 The detailed current architecture is documented in [docs/architecture/testdesk-architecture.md](docs/architecture/testdesk-architecture.md), and the dependency-driven implementation plan is in [docs/roadmap.md](docs/roadmap.md).
 
@@ -18,6 +22,7 @@ design are documented in:
 - [Test result workspaces](docs/design/test-results-workspaces.md)
 - [Target Jenkins result-ingestion architecture](docs/architecture/jenkins-test-results.md)
 - [ADR-0004: Use three Test Types and normalize Jenkins output](docs/adr/0004-use-three-test-types-and-normalize-jenkins-output.md)
+- [ADR-0005: Group Test Runs and derive Regression comparisons](docs/adr/0005-group-test-runs-and-derive-regression-comparisons.md)
 
 ## Requirements
 
@@ -64,8 +69,16 @@ The application currently uses an in-memory catalog and simulation connector so 
 
 The next production seams are:
 
-1. Replace the in-memory catalog with a Git synchronizer and durable read model.
-2. Add framework-specific catalog adapters and a non-BDD vertical slice.
-3. Add Ansible/Jenkins connectors that submit a pinned commit, environment, and opaque selection references.
-4. Persist executions, external references, results, and connector observations so queued/running history survives restarts.
-5. Add authentication and authorization around source/environment access.
+1. Migrate the contract to Application Run, Test Run, the three accepted Test
+   Types, and independent Lifecycle / Outcome / Ingestion state.
+2. Persist coordination, child attempts, External Executions, observations,
+   manifests, and normalized results so retry and restart are safe.
+3. Add Jenkins dispatch plus versioned Result Manifest ingestion for one UI
+   suite and one Integration suite.
+4. Add Baseline resolution, Compatibility Fingerprint, and the derived
+   Regression comparator.
+5. Deliver the desktop result workspaces, sanitized Evidence authorization,
+   retention, and operational hardening.
+
+The detailed order and acceptance gates are maintained in
+[docs/roadmap.md](docs/roadmap.md).
