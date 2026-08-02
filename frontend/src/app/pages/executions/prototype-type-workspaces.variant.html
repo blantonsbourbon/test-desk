@@ -1,0 +1,684 @@
+<section class="variant-a">
+  <header class="app-heading">
+    <div class="app-heading__identity">
+      <span class="app-heading__mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M7 4.5h10A2.5 2.5 0 0 1 19.5 7v10a2.5 2.5 0 0 1-2.5 2.5H7A2.5 2.5 0 0 1 4.5 17V7A2.5 2.5 0 0 1 7 4.5Z" />
+          <path d="m8 12 2.25 2.25L16 8.5" />
+        </svg>
+      </span>
+      <div>
+        <div class="breadcrumbs prototype-breadcrumbs">
+          <a routerLink="/catalog">Catalog</a>
+          <span class="sep">/</span>
+          <span>{{ appName }}</span>
+        </div>
+        <div class="app-heading__title">
+          <h1>{{ appName }}</h1>
+          @if (attentionCount > 0) {
+            <span class="status-chip status-chip--failed">
+              <span class="status-dot" aria-hidden="true"></span>
+              Attention needed
+            </span>
+          }
+        </div>
+        <p>One application run coordinating source tests and a derived release comparison.</p>
+      </div>
+    </div>
+
+    <div class="app-heading__actions">
+      <button
+        type="button"
+        class="proto-button proto-button--secondary"
+        (click)="mockAction('Open Jenkins source runs')"
+      >
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M7.5 4.5h-3v11h11v-3" />
+          <path d="M10 4.5h5.5V10M15.2 4.8 9 11" />
+        </svg>
+        Jenkins source runs
+      </button>
+      <button type="button" class="proto-button proto-button--primary" (click)="mockAction('Run application')">
+        <svg viewBox="0 0 20 20" aria-hidden="true">
+          <path d="m7 5 8 5-8 5V5Z" />
+        </svg>
+        Run application
+      </button>
+    </div>
+  </header>
+
+  <section class="run-context" aria-label="Run context">
+    <div class="run-context__item">
+      <span>Application run</span>
+      <strong class="mono">{{ applicationRun }}</strong>
+    </div>
+    <div class="run-context__item">
+      <span>Environment</span>
+      <strong>
+        <i class="environment-dot environment-dot--qa" aria-hidden="true"></i>
+        qa
+      </strong>
+    </div>
+    <div class="run-context__item">
+      <span>Candidate revision</span>
+      <strong class="mono">main · {{ revision }}</strong>
+      <small>Source healthy · manifest available</small>
+    </div>
+    <div class="run-context__item">
+      <span>Pinned baseline</span>
+      <strong class="mono">{{ baselineRun }}</strong>
+    </div>
+    <div class="run-context__item run-context__item--status">
+      <span>Coordination state</span>
+      <strong>Completed · attention needed</strong>
+      <small>5 / 5 source runs + 1 / 1 comparison complete</small>
+    </div>
+    <div class="run-context__item run-context__item--status">
+      <span>Trigger and time</span>
+      <strong>{{ applicationTrigger }}</strong>
+      <small>{{ applicationStartedAt }} → {{ applicationCompletedAt }}</small>
+    </div>
+  </section>
+
+  <section class="type-overview panel-proto">
+    <header class="section-heading">
+      <div>
+        <h2 id="proto-type-list-label">Test types</h2>
+        <p>Three separate workspaces coordinated by {{ applicationRun }}.</p>
+      </div>
+      <span class="section-heading__meta">5 Jenkins builds · 1 derived comparison</span>
+    </header>
+
+    <div
+      class="type-list"
+      role="tablist"
+      aria-labelledby="proto-type-list-label"
+      (keydown)="onTypeListKeydown($event)"
+    >
+      @for (summary of summaries; track summary.type) {
+        <button
+          type="button"
+          role="tab"
+          class="type-row"
+          [id]="tabId(summary.type)"
+          [class.type-row--active]="selectedType === summary.type"
+          [class.type-row--ui]="summary.type === 'UI'"
+          [class.type-row--integration]="summary.type === 'INTEGRATION'"
+          [class.type-row--regression]="summary.type === 'REGRESSION'"
+          [class.type-row--has-fail]="summary.attentionCount > 0"
+          [attr.aria-selected]="selectedType === summary.type"
+          [attr.aria-controls]="panelId(summary.type)"
+          [attr.tabindex]="selectedType === summary.type ? 0 : -1"
+          (click)="selectType(summary.type)"
+        >
+          <span class="type-row__icon" aria-hidden="true">
+            @switch (summary.type) {
+              @case ('UI') {
+                <svg viewBox="0 0 24 24">
+                  <rect x="4" y="5" width="16" height="14" rx="2" />
+                  <path d="M4 9h16M8 7h.01M11 7h.01" />
+                </svg>
+              }
+              @case ('INTEGRATION') {
+                <svg viewBox="0 0 24 24">
+                  <path d="M8 7H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3M16 7h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3M8 12h8M13 9l3 3-3 3" />
+                </svg>
+              }
+              @default {
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 18V6M4 18h16" />
+                  <path d="m7 14 3-4 3 2 4-6" />
+                  <path d="M15 6h2v2" />
+                </svg>
+              }
+            }
+          </span>
+
+          <span class="type-row__identity">
+            <strong>{{ summary.label }}</strong>
+            <small>{{ summary.description }}</small>
+          </span>
+
+          <span class="type-row__metric">
+            <small>Scope</small>
+            <strong>{{ summary.scope }}</strong>
+          </span>
+
+          <span class="type-row__metric" [class.type-row__metric--failed]="summary.attentionCount > 0">
+            <small>{{ summary.metricLabel }}</small>
+            <strong>{{ summary.metricValue }}</strong>
+          </span>
+
+          <span class="type-row__build">
+            <small>{{ summary.runCount }} · duration</small>
+            <strong>{{ summary.runReference }} · {{ summary.duration }}</strong>
+          </span>
+
+          <span class="type-row__trust">
+            <span
+              class="status-chip"
+              [class.status-chip--failed]="summary.outcome === 'FAILED'"
+              [class.status-chip--passed]="summary.outcome === 'PASSED'"
+            >
+              <span class="status-dot" aria-hidden="true"></span>
+              {{ summary.outcome }}
+            </span>
+            <small>{{ summary.ingestion }} report</small>
+          </span>
+
+          <svg class="type-row__arrow" viewBox="0 0 20 20" aria-hidden="true">
+            <path d="m7.5 5 5 5-5 5" />
+          </svg>
+        </button>
+      }
+    </div>
+  </section>
+
+  <section
+    class="workspace panel-proto"
+    role="tabpanel"
+    [id]="panelId(selectedType)"
+    [attr.aria-labelledby]="tabId(selectedType)"
+  >
+    <header class="workspace__header">
+      <div class="workspace__title">
+        <span
+          class="workspace__icon"
+          [class.workspace__icon--integration]="selectedType === 'INTEGRATION'"
+          [class.workspace__icon--regression]="selectedType === 'REGRESSION'"
+          aria-hidden="true"
+        >
+          @switch (selectedType) {
+            @case ('UI') {
+              <svg viewBox="0 0 24 24">
+                <rect x="4" y="5" width="16" height="14" rx="2" />
+                <path d="M4 9h16M8 7h.01M11 7h.01" />
+              </svg>
+            }
+            @case ('INTEGRATION') {
+              <svg viewBox="0 0 24 24">
+                <path d="M8 7H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3M16 7h3a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3M8 12h8M13 9l3 3-3 3" />
+              </svg>
+            }
+            @default {
+              <svg viewBox="0 0 24 24">
+                <path d="M4 18V6M4 18h16" />
+                <path d="m7 14 3-4 3 2 4-6" />
+                <path d="M15 6h2v2" />
+              </svg>
+            }
+          }
+        </span>
+        <div>
+          <div class="workspace__meta">
+            <span>{{ selectedSourceRun?.framework ?? selectedSummary.framework }}</span>
+            <span aria-hidden="true">·</span>
+            @if (selectedType === 'REGRESSION') {
+              <span>Derived from {{ selectedSummary.runReference }}</span>
+            } @else {
+              <span>Jenkins {{ selectedSourceRun?.build }}</span>
+            }
+          </div>
+          <h2>{{ selectedSummary.label }}</h2>
+        </div>
+      </div>
+
+      <div class="workspace__actions">
+        <span class="state-axis-group" aria-label="Test run state">
+          <span><small>Lifecycle</small><b>{{ statusLabel(selectedRunState.lifecycle) }}</b></span>
+          <span>
+            <small>Outcome</small>
+            <b [class.danger-text]="selectedRunState.outcome === 'FAILED'" [class.success-text]="selectedRunState.outcome === 'PASSED'">
+              {{ statusLabel(selectedRunState.outcome) }}
+            </b>
+          </span>
+          <span>
+            <small>Ingestion</small>
+            <b [class.success-text]="selectedRunState.ingestion === 'VALID'" [class.danger-text]="selectedRunState.ingestion === 'ERROR'">
+              {{ statusLabel(selectedRunState.ingestion) }}
+            </b>
+          </span>
+        </span>
+        <button type="button" class="proto-button proto-button--secondary" (click)="mockAction('Download normalized report')">
+          Download report
+        </button>
+        <button type="button" class="proto-button proto-button--secondary" (click)="mockAction('Open bounded runner output')">
+          Runner output
+        </button>
+        <button
+          type="button"
+          class="proto-button proto-button--secondary"
+          (click)="mockAction(selectedType === 'REGRESSION' ? 'Recompare results' : 'Rerun ' + selectedSummary.label)"
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M15 7V3m0 0h-4m4 0-3.1 3.1A6 6 0 1 0 16 10" />
+          </svg>
+          @if (selectedType === 'REGRESSION') {
+            Recompare results
+          } @else {
+            Rerun type
+          }
+        </button>
+      </div>
+    </header>
+
+    @switch (selectedType) {
+      @case ('UI') {
+        <div class="source-run-strip">
+          <label class="source-run-picker">
+            <small>Selected source run</small>
+            <select aria-label="UI source run" [value]="selectedUiSourceRunId" (change)="selectUiSourceRun($any($event.target).value)">
+              @for (run of uiSourceRuns; track run.id) {
+                <option [value]="run.id">{{ run.suiteName }} · {{ run.runId }}</option>
+              }
+            </select>
+          </label>
+          <span>Suite {{ uiSourceRuns.indexOf(selectedSourceRun!) + 1 }} of {{ uiSourceRuns.length }}</span>
+          <span>Jenkins {{ selectedSourceRun?.build }}</span>
+          <span class="trust-inline"><i></i>Manifest valid</span>
+        </div>
+        <div class="workspace-grid workspace-grid--ui">
+          <div class="results-pane">
+            <header class="pane-heading">
+              <div>
+                <h3>{{ selectedSourceRun?.resultTitle }}</h3>
+                <p>User journey · {{ selectedSourceRun?.resultSubtitle }} · click a step for evidence</p>
+              </div>
+              <span>{{ visibleUiSteps.length }} steps</span>
+            </header>
+
+            <div class="journey-flow" aria-label="Journey steps">
+              @for (step of visibleUiSteps; track step.id; let index = $index) {
+                <button
+                  type="button"
+                  class="journey-step"
+                  [class.journey-step--failed]="step.status === 'FAILED'"
+                  [class.journey-step--skipped]="step.status === 'SKIPPED'"
+                  [class.journey-step--selected]="selectedUiStepId === step.id"
+                  [attr.aria-pressed]="selectedUiStepId === step.id"
+                  (click)="selectUiStep(step.id)"
+                >
+                  <span
+                    class="journey-step__state"
+                    [class.journey-step__state--failed]="step.status === 'FAILED'"
+                    [class.journey-step__state--skipped]="step.status === 'SKIPPED'"
+                    aria-hidden="true"
+                  >
+                    @if (step.status === 'PASSED') {
+                      <svg viewBox="0 0 16 16"><path d="m3.5 8 3 3 6-6" /></svg>
+                    } @else if (step.status === 'FAILED') {
+                      <svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" /></svg>
+                    } @else {
+                      <svg viewBox="0 0 16 16"><path d="M4 8h8" /></svg>
+                    }
+                  </span>
+                  <span class="journey-step__order">{{ index + 1 }}</span>
+                  <span class="journey-step__body">
+                    <strong>{{ step.name }}</strong>
+                    <small>{{ step.detail }}</small>
+                  </span>
+                  <span class="row-duration">{{ step.duration }}</span>
+                  <span
+                    class="mini-status"
+                    [class.mini-status--failed]="step.status === 'FAILED'"
+                    [class.mini-status--skipped]="step.status === 'SKIPPED'"
+                  >
+                    {{ statusLabel(step.status) }}
+                  </span>
+                </button>
+              }
+            </div>
+          </div>
+
+          <aside class="evidence-pane">
+            @if (selectedUiStep; as step) {
+              <header class="pane-heading pane-heading--evidence">
+                <div>
+                  <h3>
+                    @if (step.status === 'FAILED') {
+                      Failure evidence
+                    } @else {
+                      Step evidence
+                    }
+                  </h3>
+                  <p>Selected step · {{ step.name }}</p>
+                </div>
+                <span class="evidence-step" [class.evidence-step--ok]="step.status === 'PASSED'">
+                  Step {{ uiStepNumber(step) }}
+                </span>
+              </header>
+
+              <figure class="browser-shot">
+                <div class="browser-shot__bar">
+                  <span class="browser-controls" aria-hidden="true"><i></i><i></i><i></i></span>
+                  <span class="browser-address">
+                    <svg viewBox="0 0 20 20" aria-hidden="true">
+                      <rect x="5.5" y="8" width="9" height="7" rx="1.5" />
+                      <path d="M7.5 8V6.5a2.5 2.5 0 0 1 5 0V8" />
+                    </svg>
+                    {{ step.evidence?.url }}
+                  </span>
+                </div>
+                <div class="browser-shot__body">
+                  <div class="checkout-shell">
+                    <div class="checkout-shell__nav"><b>SHOP</b><span></span><span></span></div>
+                    <div class="checkout-shell__content">
+                      <div class="product-thumb"></div>
+                      <div class="checkout-copy">
+                        <b></b>
+                        <span></span>
+                        <span></span>
+                        @if (step.status === 'FAILED') {
+                          <div class="missing-banner">
+                            <svg viewBox="0 0 20 20" aria-hidden="true">
+                              <path d="M10 3 18 17H2L10 3Z" />
+                              <path d="M10 8v4M10 14.5h.01" />
+                            </svg>
+                            Confirmation banner missing
+                          </div>
+                        } @else if (step.status === 'SKIPPED') {
+                          <div class="missing-banner missing-banner--muted">Step not executed</div>
+                        } @else {
+                          <div class="missing-banner missing-banner--ok">Step assertions passed</div>
+                        }
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <figcaption class="visually-hidden">
+                  Mock browser frame for {{ step.evidence?.url }}
+                </figcaption>
+              </figure>
+
+              <div
+                class="failure-summary"
+                [class.failure-summary--ok]="step.status === 'PASSED'"
+                [class.failure-summary--muted]="step.status === 'SKIPPED'"
+              >
+                <span class="failure-summary__icon" aria-hidden="true">
+                  <svg viewBox="0 0 20 20">
+                    @if (step.status === 'FAILED') {
+                      <path d="M10 3 18 17H2L10 3Z" />
+                      <path d="M10 8v4M10 14.5h.01" />
+                    } @else {
+                      <circle cx="10" cy="10" r="7" />
+                      <path d="m6.5 10 2.5 2.5 4.5-5" />
+                    }
+                  </svg>
+                </span>
+                <div>
+                  <strong>{{ step.evidence?.title }}</strong>
+                  <p>
+                    {{ step.evidence?.body }}
+                    @if (step.evidence?.selector) {
+                      <code>{{ step.evidence?.selector }}</code>
+                    }
+                  </p>
+                </div>
+              </div>
+
+              @if (step.status !== 'SKIPPED') {
+              <div class="artifact-actions" aria-label="Captured step artifacts">
+                <button type="button" (click)="mockAction('Open screenshot')">
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <rect x="3" y="4" width="14" height="12" rx="2" />
+                    <circle cx="7" cy="8" r="1.25" />
+                    <path d="m5 14 3.5-3 2.5 2 2-1.5 2 2.5" />
+                  </svg>
+                  Screenshot
+                </button>
+                <button type="button" (click)="mockAction('Open Playwright trace')">
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M5 4.5h10v11H5zM8 2.5v4M12 2.5v4M8 13.5h4" />
+                  </svg>
+                  Playwright trace
+                </button>
+                <button type="button" (click)="mockAction('Open video')">
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <rect x="3" y="4" width="14" height="12" rx="2" />
+                    <path d="m8 7 5 3-5 3V7Z" />
+                  </svg>
+                  Video
+                </button>
+              </div>
+              } @else {
+                <p class="no-artifacts">No artifacts captured because this step was not executed.</p>
+              }
+            }
+          </aside>
+        </div>
+      }
+
+      @case ('INTEGRATION') {
+        <div class="source-run-strip">
+          <label class="source-run-picker">
+            <small>Selected source run</small>
+            <select aria-label="Integration source run" [value]="selectedIntegrationSourceRunId" (change)="selectIntegrationSourceRun($any($event.target).value)">
+              @for (run of integrationSourceRuns; track run.id) {
+                <option [value]="run.id">{{ run.suiteName }} · {{ run.runId }}</option>
+              }
+            </select>
+          </label>
+          <span>Suite {{ integrationSourceRuns.indexOf(selectedSourceRun!) + 1 }} of {{ integrationSourceRuns.length }}</span>
+          <span>Jenkins {{ selectedSourceRun?.build }}</span>
+          <span class="trust-inline"><i></i>Manifest valid</span>
+        </div>
+        <div class="workspace-grid workspace-grid--api">
+          <div class="results-pane">
+            <header class="pane-heading">
+              <div>
+                <h3>{{ selectedSourceRun?.resultTitle }}</h3>
+                <p>{{ selectedSourceRun?.framework }} · {{ selectedSourceRun?.resultSubtitle }} · click a request for the exchange</p>
+              </div>
+              <span>{{ visibleIntegrationResults.length }} requests</span>
+            </header>
+
+            <div class="result-list" aria-label="API requests">
+              @for (result of visibleIntegrationResults; track result.id) {
+                <button
+                  type="button"
+                  class="result-row"
+                  [class.result-row--failed]="result.status === 'FAILED'"
+                  [class.result-row--skipped]="result.status === 'SKIPPED'"
+                  [class.result-row--selected]="selectedIntegrationId === result.id"
+                  [attr.aria-pressed]="selectedIntegrationId === result.id"
+                  (click)="selectIntegration(result.id)"
+                >
+                  <span class="method">{{ result.method }}</span>
+                  <span class="result-row__body">
+                    <strong>{{ result.path }}</strong>
+                    <small>{{ result.detail }}</small>
+                  </span>
+                  <span class="row-duration">{{ result.duration }}</span>
+                  <span
+                    class="mini-status"
+                    [class.mini-status--failed]="result.status === 'FAILED'"
+                    [class.mini-status--skipped]="result.status === 'SKIPPED'"
+                  >
+                    {{ statusLabel(result.status) }}
+                  </span>
+                </button>
+              }
+            </div>
+          </div>
+
+          <aside class="evidence-pane contract-pane">
+            @if (selectedIntegration; as result) {
+              <header class="pane-heading pane-heading--evidence">
+                <div>
+                  <h3>
+                    @if (result.status === 'FAILED') {
+                      Failed API exchange
+                    } @else {
+                      API exchange
+                    }
+                  </h3>
+                  <p>Headers and secrets sanitized</p>
+                </div>
+                <span class="evidence-step" [class.evidence-step--ok]="result.status === 'PASSED'">
+                  {{ statusCode(result.evidence?.actualStatus) }}
+                </span>
+              </header>
+
+              <div class="http-summary">
+                <b>{{ result.method }}</b>
+                <code>{{ result.path }}</code>
+                <span>{{ result.evidence?.durationMs ?? 0 }} ms</span>
+              </div>
+              <pre><span>// expected</span>
+HTTP/1.1 <b>{{ result.evidence?.expectedStatus }}</b>
+{{ result.evidence?.expectedBody }}
+
+<span>// actual</span>
+HTTP/1.1 <em>{{ result.evidence?.actualStatus }}</em>
+{{ result.evidence?.actualBody }}</pre>
+
+              <div class="artifact-actions">
+                <button type="button" (click)="mockAction('Open response body')">
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M7 4 3 10l4 6M13 4l4 6-4 6M11.5 2.5l-3 15" />
+                  </svg>
+                  Response body
+                </button>
+                <button type="button" (click)="mockAction('Open service log')">
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M4 5h12M4 10h12M4 15h8" />
+                  </svg>
+                  Service log
+                </button>
+              </div>
+            }
+          </aside>
+        </div>
+      }
+
+      @case ('REGRESSION') {
+        <div class="regression-workspace">
+          <div class="regression-provenance">
+            <div>
+              <small>Comparison source</small>
+              <strong>5 completed source runs</strong>
+              <span>Candidate {{ candidateSourceRunIds.join(' · ') }}</span>
+              <span>Baseline {{ baselineSourceRunIds.join(' · ') }}</span>
+            </div>
+            <div>
+              <small>Compatibility</small>
+              <strong class="success-text">Fingerprint matched</strong>
+              <span class="mono">{{ compatibilityFingerprint }}</span>
+              <span>qa · policy v3 · baseline {{ baselineRevision }}</span>
+              <span>{{ comparisonStartedAt }} → {{ comparisonCompletedAt }}</span>
+            </div>
+            <div>
+              <small>Blocking rule</small>
+              <strong>New failures</strong>
+              <span>Persistent failures remain visible</span>
+            </div>
+          </div>
+
+          <div class="comparison-strip">
+            <div>
+              <span>Accepted baseline</span>
+              <strong>{{ baselineRun }} · release-2026.07.24</strong>
+              <small>5 source runs · 306 comparable · 312 analyzed</small>
+            </div>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14M15 8l4 4-4 4" />
+            </svg>
+            <div>
+              <span>Candidate</span>
+              <strong>{{ applicationRun }} · {{ revision }}</strong>
+              <small>5 source runs · 306 comparable · 312 analyzed</small>
+            </div>
+            <div class="comparison-strip__delta">
+              <strong>+1.0 pp</strong>
+              <span>Comparable pass-rate change</span>
+            </div>
+          </div>
+
+          <div class="delta-summary-grid" aria-label="Regression comparison summary">
+            <div><span>New blocking failures</span><strong class="danger-text">4</strong><small>Fails policy</small></div>
+            <div><span>Persistent failures</span><strong>2</strong><small>Known from baseline</small></div>
+            <div><span>Fixed</span><strong class="success-text">7</strong><small>Now passing</small></div>
+            <div><span>Unchanged</span><strong>293</strong><small>Same outcome</small></div>
+            <div><span>Added cases</span><strong>3</strong><small>Candidate only</small></div>
+            <div><span>Removed cases</span><strong>1</strong><small>Baseline only</small></div>
+            <div><span>Not selected</span><strong>2</strong><small>Intentional</small></div>
+            <div><span>Missing / invalid</span><strong class="success-text">0</strong><small>Inputs complete</small></div>
+          </div>
+
+          <div class="regression-toolbar">
+            <div class="filter-pills" role="group" aria-label="Regression list filter">
+              <button
+                type="button"
+                class="filter-pill"
+                [class.filter-pill--active]="regressionFilter === 'attention'"
+                [attr.aria-pressed]="regressionFilter === 'attention'"
+                (click)="setRegressionFilter('attention')"
+              >
+                Needs attention
+              </button>
+              <button
+                type="button"
+                class="filter-pill"
+                [class.filter-pill--active]="regressionFilter === 'all'"
+                [attr.aria-pressed]="regressionFilter === 'all'"
+                (click)="setRegressionFilter('all')"
+              >
+                All sample rows
+              </button>
+            </div>
+            <span class="regression-toolbar__meta">
+              Showing {{ visibleRegressionResults.length }} of {{ regressionResults.length }} sample rows
+            </span>
+          </div>
+
+          <div class="result-list regression-list" aria-label="Regression cases">
+            @for (result of visibleRegressionResults; track result.id) {
+              <button
+                type="button"
+                class="result-row"
+                [class.result-row--failed]="result.status === 'FAILED'"
+                [class.result-row--selected]="selectedRegressionId === result.id"
+                [attr.aria-pressed]="selectedRegressionId === result.id"
+                (click)="selectRegression(result.id)"
+              >
+                <span
+                  class="delta-marker"
+                  [class.delta-marker--fixed]="result.delta === 'FIXED'"
+                  [class.delta-marker--new]="result.delta === 'NEW'"
+                  [class.delta-marker--known]="result.delta === 'KNOWN'"
+                >
+                  {{ result.delta }}
+                </span>
+                <span class="result-row__body">
+                  <strong>{{ result.name }}</strong>
+                  <small>{{ result.detail }}</small>
+                </span>
+                <span class="row-duration">{{ result.duration }}</span>
+                <span class="mini-status" [class.mini-status--failed]="result.status === 'FAILED'">
+                  {{ statusLabel(result.status) }}
+                </span>
+              </button>
+            }
+          </div>
+
+          @if (selectedRegression; as result) {
+            <div class="regression-detail" role="status">
+              <strong>{{ result.name }}</strong>
+              <span class="delta-marker" [class.delta-marker--fixed]="result.delta === 'FIXED'" [class.delta-marker--new]="result.delta === 'NEW'">
+                {{ result.delta }}
+              </span>
+              <p>{{ result.detail }} · {{ result.duration }}</p>
+              <p class="regression-detail__identity">
+                Result identity · <code>{{ identityLabel(result) }}</code>
+              </p>
+              <button type="button" class="proto-button proto-button--secondary" (click)="mockAction('Open case history for ' + result.name)">
+                Open case history
+              </button>
+            </div>
+          }
+        </div>
+      }
+    }
+  </section>
+</section>

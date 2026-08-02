@@ -1,0 +1,9 @@
+{
+  "name": "test-desk-sites-host",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "npm ci --prefix frontend && npm --prefix frontend run build && node scripts/prepare-sites.mjs",
+    "test:sites": "node --test scripts/sites-worker.test.mjs"
+  }
+}

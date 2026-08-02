@@ -341,11 +341,18 @@ const worker = {
     if (url.pathname.startsWith('/api/v1/')) {
       return handleApi(request);
     }
+
+    const leaf = url.pathname.split('/').at(-1) ?? '';
+    const isAppRoute = request.method === 'GET' && !leaf.includes('.');
+    if (isAppRoute) {
+      return env.ASSETS.fetch(new Request(new URL('/', request.url), request));
+    }
+
     const asset = await env.ASSETS.fetch(request);
     if (asset.status !== 404 || request.method !== 'GET') {
       return asset;
     }
-    return env.ASSETS.fetch(new Request(new URL('/index.html', request.url), request));
+    return env.ASSETS.fetch(new Request(new URL('/', request.url), request));
   },
 };
 

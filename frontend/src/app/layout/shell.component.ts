@@ -22,7 +22,7 @@ import { ToastHostComponent } from '../shared/toast-host.component';
           </div>
           <div>
             <div class="brand__title">Test Desk</div>
-            <div class="brand__sub">BDD catalog console</div>
+            <div class="brand__sub">Test execution console</div>
           </div>
         </div>
 
