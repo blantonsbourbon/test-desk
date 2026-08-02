@@ -78,7 +78,6 @@ export interface RegressionRow extends PrototypeResultRow {
 export const APP_NAME = 'Checkout Web';
 export const REVISION = 'a13f9c2';
 export const APPLICATION_RUN = 'AR-1048';
-export const APPLICATION_TRIGGER = 'Jenkins release pipeline · svc-release-bot';
 export const APPLICATION_STARTED_AT = '2026-08-01 13:36:31 UTC';
 export const APPLICATION_COMPLETED_AT = '2026-08-01 13:45:23 UTC';
 export const BASELINE_RUN = 'AR-1042';

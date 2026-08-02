@@ -181,7 +181,7 @@
 .run-context {
   margin-bottom: 0.85rem;
   display: grid;
-  grid-template-columns: repeat(4, minmax(7rem, 0.7fr)) minmax(13rem, 1.25fr);
+  grid-template-columns: repeat(4, minmax(7rem, 0.7fr)) repeat(2, minmax(14rem, 1.25fr));
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   overflow: hidden;

@@ -6,7 +6,6 @@ import {
   APPLICATION_RUN,
   APPLICATION_COMPLETED_AT,
   APPLICATION_STARTED_AT,
-  APPLICATION_TRIGGER,
   APP_NAME,
   BASELINE_REVISION,
   BASELINE_RUN,
@@ -50,7 +49,6 @@ export class PrototypeTypeWorkspacesVariant {
   private readonly route = inject(ActivatedRoute);
 
   readonly applicationRun = APPLICATION_RUN;
-  readonly applicationTrigger = APPLICATION_TRIGGER;
   readonly applicationStartedAt = APPLICATION_STARTED_AT;
   readonly applicationCompletedAt = APPLICATION_COMPLETED_AT;
   readonly appName = APP_NAME;
