@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Git-first Test Desk",
+    "subtitle": "Manifest sync, version-pinned execution, deployment provenance, and durable evidence",
+    "output": "git-first-test-desk.architecture.html",
+    "quality_profile": "showcase",
+    "visual_preset": "editorial",
+    "repository": {
+      "url": "https://github.com/blantonsbourbon/test-desk",
+      "revision": "3c9f7fa82981cc309d25421a1360b366e096b4f3"
+    },
+    "views": [
+      {
+        "id": "source-projection",
+        "label": "Git to test definitions",
+        "focus": ["git", "sync", "postgres"],
+        "note": "A committed YAML manifest becomes immutable Suite, Case, and Case Revision data."
+      },
+      {
+        "id": "run-provenance",
+        "label": "Version-pinned run",
+        "focus": ["console", "run_api", "release", "deployment", "postgres", "connector", "runner"],
+        "note": "An Application Run binds the application release, deployment, environment, and test source revision."
+      },
+      {
+        "id": "results-and-evidence",
+        "label": "Results and evidence",
+        "focus": ["runner", "ingest", "postgres", "s3"],
+        "note": "Normalized results remain queryable while raw and Allure artifacts stay in object storage."
+      }
+    ]
+  },
+  "components": [
+    { "id": "console", "type": "frontend", "label": "Test Desk Console", "sublabel": "discover · select · investigate", "pos": [40, 300], "size": [150, 66], "tag": "read + run" },
+    { "id": "git", "type": "external", "label": "Git Test Source", "sublabel": "manifest.yaml + test code", "pos": [40, 90], "size": [150, 66], "tag": "authoritative" },
+    { "id": "release", "type": "external", "label": "CI/CD Release", "sublabel": "build + image digest", "pos": [270, 90], "size": [150, 66], "tag": "Application Release" },
+    { "id": "deployment", "type": "external", "label": "Deployment Target", "sublabel": "environment + deployment", "pos": [500, 90], "size": [150, 66], "tag": "production trace" },
+    { "id": "sync", "type": "backend", "label": "Manifest Sync", "sublabel": "fetch · validate · project", "pos": [270, 250], "size": [150, 66], "tag": "exact Git commit", "sources": [{ "path": "src/main/java/com/acme/testdesk/service/SourceService.java", "line": 24 }, { "path": "src/main/java/com/acme/testdesk/service/CatalogService.java", "line": 148 }] },
+    { "id": "run_api", "type": "backend", "label": "Run Coordinator", "sublabel": "select · snapshot · dispatch", "pos": [500, 300], "size": [150, 66], "tag": "Application Run", "sources": [{ "path": "src/main/java/com/acme/testdesk/service/ExecutionService.java", "line": 36 }] },
+    { "id": "postgres", "type": "database", "label": "PostgreSQL", "sublabel": "source · definitions · runs · audit", "pos": [730, 220], "size": [170, 74], "tag": "durable truth" },
+    { "id": "connector", "type": "backend", "label": "Execution Connectors", "sublabel": "K8s Job / Jenkins", "pos": [730, 390], "size": [170, 66], "tag": "opaque external ref" },
+    { "id": "runner", "type": "external", "label": "Test Runner", "sublabel": "Linux Pod / Windows Agent", "pos": [960, 390], "size": [150, 66], "tag": "result manifest" },
+    { "id": "ingest", "type": "backend", "label": "Result Ingestor", "sublabel": "verify · normalize · assess", "pos": [1180, 300], "size": [160, 66], "tag": "Outcome + Ingestion" },
+    { "id": "s3", "type": "cloud", "label": "S3 Artifact Store", "sublabel": "raw · Allure · evidence", "pos": [1180, 90], "size": [160, 66], "tag": "hash + retention" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Test Desk", "wraps": ["sync", "run_api", "postgres", "connector", "ingest", "s3"], "pad": 28 },
+    { "kind": "region", "label": "Application delivery", "wraps": ["release", "deployment"], "pad": 24 }
+  ],
+  "connections": [
+    { "id": "git-to-sync", "from": "git", "to": "sync", "label": "commit + manifest", "variant": "emphasis" },
+    { "id": "sync-to-db", "from": "sync", "to": "postgres" },
+    { "id": "release-to-db", "from": "release", "to": "postgres", "variant": "dashed" },
+    { "id": "deployment-to-db", "from": "deployment", "to": "postgres", "variant": "dashed" },
+    { "id": "console-to-run", "from": "console", "to": "run_api", "variant": "emphasis" },
+    { "id": "run-to-db", "from": "run_api", "to": "postgres" },
+    { "id": "run-to-connector", "from": "run_api", "to": "connector", "variant": "emphasis" },
+    { "id": "connector-to-runner", "from": "connector", "to": "runner" },
+    { "id": "runner-to-ingest", "from": "runner", "to": "ingest" },
+    { "id": "ingest-to-db", "from": "ingest", "to": "postgres" },
+    { "id": "ingest-to-s3", "from": "ingest", "to": "s3", "label": "raw + Allure + evidence", "variant": "dashed" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Source truth", "items": ["Git commit is the Test Source Revision", "Manifest sync is atomic and repeatable", "Test Suite and Test Case are read-only projections"] },
+    { "dot": "emerald", "title": "Forensic identity", "items": ["Application Run pins the Test Source Revision", "Application Release and Deployment identify what was tested", "Run Snapshot preserves the exact resolved selection"] },
+    { "dot": "violet", "title": "Result trust", "items": ["Lifecycle, Outcome, and Ingestion State stay independent", "Allure is a report artifact, not the only source of truth", "Raw evidence remains addressable by immutable artifact metadata"] }
+  ]
+}

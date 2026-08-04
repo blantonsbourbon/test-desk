@@ -4,7 +4,7 @@ The shared language for a company-internal product that organizes test
 capabilities, coordinates application-level runs, and presents trustworthy
 results independently of the infrastructure that executes tests.
 
-## Catalog
+## Test definitions
 
 **Application**:
 The product or deployable service whose automated test capabilities and
@@ -12,29 +12,38 @@ results are grouped together.
 _Avoid_: Jenkins job, repository, Test Suite
 
 **Test Source**:
-The authoritative location where versioned test definitions are maintained.
-Test Desk reflects a Test Source but does not redefine its contents.
+The authoritative Git repository where versioned test definitions and their
+manifest are maintained. Test Desk reflects a Test Source but does not edit
+or redefine its contents.
 _Avoid_: Test database, platform copy
 
-**Test Catalog**:
-A read-only view of test definitions synchronized from a Test Source for
-discovery, execution, and result lookup.
-_Avoid_: Test editor, test authoring tool
+**Test Manifest**:
+A versioned YAML declaration in a Test Source that describes an Application's
+Test Suites, Test Cases, stable identities, source locations, and execution
+metadata. It is part of the Test Source and is not a runtime result.
+_Avoid_: Test database, execution report
 
-**Catalog Revision**:
-A synchronized snapshot of a Test Source identified by one immutable source
-revision.
+**Test Source Revision**:
+An immutable Git revision from which the Test Manifest, Test Suites, and Test
+Cases are resolved.
 _Avoid_: Latest code, mutable branch state
 
-**Catalog Entry**:
-The read-only representation of one independently selectable Test Definition
-at a Catalog Revision.
-_Avoid_: Scenario when referring to all test types, editable test
-
 **Test Suite**:
-A named group of related executable Catalog Entries that share one Source Test
-Type (`UI` or `Integration`) and execution compatibility.
+A named group of related executable Test Cases that share one Source Test Type
+(`UI` or `Integration`) and execution compatibility. A Suite organizes and
+selects cases; it is not an Application Run.
 _Avoid_: Jenkins job, Application Run, generic pipeline
+
+**Test Case**:
+One independently selectable, semantically meaningful test declared by the
+Test Manifest. A Test Case has a stable identity across Test Source Revisions.
+_Avoid_: Display row, run-local result
+
+**Test Case Revision**:
+The immutable parsed definition of a Test Case at one Test Source Revision,
+including its source location, framework binding, parameters, and execution
+reference.
+_Avoid_: Mutable current case, Test Run
 
 **Test Type**:
 The result family of a Test Suite, Regression Policy, or Test Run: `UI`,
@@ -52,11 +61,35 @@ The library or report protocol used by a Test Suite, such as Playwright, Rest
 Assured, Cucumber, or JUnit.
 _Avoid_: Test Type, connector, execution environment
 
+**Application Release**:
+An immutable built version of an Application, identified by its release/build
+identity and artifact identity. It is the application version that a test
+evaluates.
+_Avoid_: Git branch, Test Source Revision
+
+**Deployment**:
+The placement of an Application Release into an Environment. A Deployment
+records which release was present at a target and supports replacement and
+rollback history.
+_Avoid_: Environment, Application Run
+
+**Execution Provenance**:
+The immutable facts connecting an Application Run to the Application Release,
+Deployment, Test Source Revision, and execution context that produced it.
+_Avoid_: Audit event, display metadata
+
+**Run Snapshot**:
+The immutable resolved selection and configuration used by an Application Run,
+including the Test Cases, Test Case Revisions, Environment, and execution
+policies selected at creation time.
+_Avoid_: Current manifest, mutable run definition
+
 ## Execution
 
 **Application Run**:
-One revision-pinned request to evaluate an Application in one Environment. It
-owns the child Test Runs created by `Run all` or by an equivalent API request.
+One revision-pinned request to evaluate an Application Release in one
+Environment. It owns the child Test Runs created by `Run all` or by an
+equivalent API request, and retains Execution Provenance and a Run Snapshot.
 _Avoid_: RunSet, Jenkins pipeline, synthetic test result
 
 **Application Run State**:
