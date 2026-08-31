@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Test Desk — Manual case lifecycle prototype</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f5f6f7;
+      --sidebar: #fafafa;
+      --surface-1: #ffffff;
+      --surface-2: #f2f4f5;
+      --table-header: #fcfbf8;
+      --border-subtle: #e8e8e8;
+      --border-strong: #d4d4d4;
+      --text: #030303;
+      --text-muted: #737373;
+      --text-faint: #a3a3a3;
+      --accent: #070707;
+      --accent-fg: #ffffff;
+      --success: #007e46;
+      --success-bg: #eef6f0;
+      --danger: #cc272e;
+      --danger-bg: #f9f1f1;
+      --warning: #b07100;
+      --warning-bg: #f5f1e9;
+      --info: #3566b8;
+      --info-bg: #f0f4f9;
+      --running: #008287;
+      --running-bg: #eef5f5;
+      --shadow-card: 0 1px 2px rgba(0,0,0,.04);
+      --shadow-drawer: -8px 0 32px rgba(0,0,0,.08);
+      --shadow-dialog: 0 16px 48px rgba(0,0,0,.12);
+      --radius: .625rem;
+      --sidebar-w: 15.5rem;
+      --font: Geist, Inter, system-ui, sans-serif;
+      --mono: "Geist Mono", ui-monospace, Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 15px/1.45 var(--font); }
+    button, input, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    :focus { outline: none; }
+    :focus-visible { outline: 2px solid color-mix(in srgb, #070707 28%, transparent); outline-offset: 2px; }
+    .mono { font-family: var(--mono); font-variant-ligatures: none; }
+    .shell { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100%; }
+    .sidebar { background: var(--sidebar); border-right: 1px solid var(--border-subtle); padding: 1.1rem .9rem; }
+    .brand { display: flex; gap: .7rem; align-items: center; margin-bottom: 1.4rem; padding: 0 .35rem; }
+    .brand__mark { width: 1.85rem; height: 1.85rem; border-radius: .45rem; background: var(--accent); color: #fff; display: grid; place-items: center; }
+    .brand__mark svg { width: 1rem; height: 1rem; }
+    .brand__title { font-weight: 600; letter-spacing: -.02em; }
+    .brand__sub { color: var(--text-muted); font-size: .75rem; }
+    .nav { display: flex; flex-direction: column; gap: .2rem; }
+    .nav a { display: flex; gap: .55rem; align-items: center; padding: .48rem .6rem; border-radius: .5rem; color: var(--text-muted); text-decoration: none; font-weight: 500; font-size: .92rem; }
+    .nav a.is-active { background: #fff; color: var(--text); border: 1px solid var(--border-subtle); box-shadow: var(--shadow-card); }
+    .nav svg { width: 1rem; height: 1rem; }
+    .main { min-width: 0; }
+    .notice { display: flex; justify-content: space-between; gap: 1rem; align-items: center; padding: .55rem 1.25rem; border-bottom: 1px solid var(--border-subtle); background: #fff; font-size: .82rem; color: var(--text-muted); }
+    .notice strong { color: var(--text); font-weight: 600; }
+    .notice__dot { width: .45rem; height: .45rem; border-radius: 50%; background: var(--running); display: inline-block; margin-right: .45rem; }
+    .tabs { display: flex; gap: .35rem; padding: .7rem 1.25rem 0; }
+    .tab { border: 1px solid var(--border-subtle); background: #fff; border-radius: 999px; padding: .28rem .7rem; font-size: .78rem; font-weight: 600; color: var(--text-muted); }
+    .tab[aria-selected="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .page { padding: .85rem 1.25rem 1.5rem; max-width: 1440px; }
+    .crumbs { color: var(--text-muted); font-size: .85rem; margin-bottom: .4rem; }
+    .crumbs span + span::before { content: "/"; margin: 0 .35rem; opacity: .55; }
+    .page-head { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: .45rem; }
+    h1 { margin: .1rem 0 .3rem; font-size: 1.5rem; letter-spacing: -.03em; font-weight: 600; }
+    .sub { margin: 0; color: var(--text-muted); max-width: 46rem; }
+    .meta { display: flex; flex-wrap: wrap; gap: .45rem .7rem; color: var(--text-muted); font-size: .82rem; margin: .55rem 0 .9rem; }
+    .btn { display: inline-flex; align-items: center; gap: .4rem; height: 2.35rem; padding: 0 .85rem; border-radius: .5rem; border: 1px solid var(--border-strong); background: #fff; font-weight: 600; font-size: .88rem; }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn--primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+    .btn--ghost { border-color: transparent; }
+    .btn--danger { background: var(--danger-bg); color: var(--danger); border-color: color-mix(in srgb, var(--danger) 22%, var(--border-subtle)); }
+    .btn-sm { height: 2rem; padding: 0 .6rem; font-size: .78rem; }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: .65rem; margin-bottom: .85rem; }
+    .stat { background: #fff; border: 1px solid var(--border-subtle); border-radius: var(--radius); padding: .7rem .85rem; box-shadow: var(--shadow-card); }
+    .stat b { display: block; font-size: 1.15rem; letter-spacing: -.02em; }
+    .stat span { color: var(--text-muted); font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; margin-bottom: .7rem; }
+    .search { height: 2.2rem; border: 1px solid var(--border-subtle); border-radius: .5rem; padding: 0 .7rem; background: #fff; min-width: 16rem; }
+    .chip { display: inline-flex; align-items: center; gap: .3rem; border: 1px solid var(--border-subtle); background: #fff; border-radius: 999px; padding: .18rem .55rem; font-size: .75rem; font-weight: 600; color: var(--text-muted); }
+    .chip.is-on { border-color: #111; background: #f3f3f3; color: var(--text); }
+    .badge { display: inline-flex; align-items: center; gap: .35rem; padding: .16rem .5rem .16rem .42rem; border-radius: 999px; border: 1px solid var(--border-subtle); background: var(--surface-2); color: var(--text-muted); font-size: .72rem; font-weight: 600; white-space: nowrap; }
+    .badge i { width: .38rem; height: .38rem; border-radius: 50%; background: currentColor; display: block; }
+    .badge.passed { color: var(--success); background: var(--success-bg); border-color: color-mix(in srgb, var(--success) 22%, var(--border-subtle)); }
+    .badge.failed { color: var(--danger); background: var(--danger-bg); border-color: color-mix(in srgb, var(--danger) 22%, var(--border-subtle)); }
+    .badge.blocked { color: var(--warning); background: var(--warning-bg); border-color: color-mix(in srgb, var(--warning) 25%, var(--border-subtle)); }
+    .badge.running { color: var(--running); background: var(--running-bg); border-color: color-mix(in srgb, var(--running) 25%, var(--border-subtle)); }
+    .badge.manual { color: var(--info); background: var(--info-bg); border-color: color-mix(in srgb, var(--info) 22%, var(--border-subtle)); }
+    .badge.changed { color: var(--info); background: var(--info-bg); border-color: color-mix(in srgb, var(--info) 22%, var(--border-subtle)); }
+    .panel { background: #fff; border: 1px solid var(--border-subtle); border-radius: var(--radius); box-shadow: var(--shadow-card); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; background: var(--table-header); font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; padding: .55rem .75rem; border-bottom: 1px solid var(--border-subtle); }
+    td { padding: .62rem .75rem; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; font-size: .9rem; }
+    tr { cursor: pointer; }
+    tr:hover td { background: var(--surface-2); }
+    tr.is-selected td { background: #f7f7f7; }
+    tr.failed-row td:first-child { box-shadow: inset 3px 0 0 var(--danger); }
+    .name { font-weight: 600; letter-spacing: -.01em; }
+    .hint { color: var(--text-muted); font-size: .78rem; }
+    .group-h { display: flex; justify-content: space-between; align-items: center; padding: .65rem .85rem; background: #fff; border-bottom: 1px solid var(--border-subtle); }
+    .group-h h2 { margin: 0; font-size: .92rem; }
+    .lock { color: var(--text-muted); font-size: .75rem; font-weight: 600; }
+    .drawer-scrim { position: fixed; inset: 0; background: rgba(3,3,3,.28); display: none; }
+    .drawer-scrim.open { display: block; }
+    .drawer { position: fixed; top: 0; right: 0; width: min(28.5rem, 100%); height: 100%; background: #fff; box-shadow: var(--shadow-drawer); transform: translateX(100%); transition: transform .16s ease-out; display: flex; flex-direction: column; }
+    .drawer.open { transform: none; }
+    .drawer header { padding: 1rem 1.1rem .7rem; border-bottom: 1px solid var(--border-subtle); }
+    .drawer header h3 { margin: .2rem 0 .35rem; font-size: 1.05rem; }
+    .drawer .body { padding: 1rem 1.1rem 5rem; overflow: auto; }
+    .kvs { display: grid; grid-template-columns: 7.2rem 1fr; gap: .35rem .6rem; font-size: .82rem; margin-bottom: 1rem; }
+    .kvs dt { color: var(--text-muted); }
+    .step { border: 1px solid var(--border-subtle); border-radius: .5rem; padding: .65rem .7rem; margin-bottom: .45rem; background: #fff; }
+    .step b { font-size: .72rem; color: var(--text-muted); letter-spacing: .04em; text-transform: uppercase; }
+    .step p { margin: .15rem 0 0; }
+    .expected { color: var(--text-muted); font-size: .82rem; }
+    .step-head { display:flex; justify-content:space-between; gap:.7rem; align-items:flex-start; }
+    .seg { display:flex; gap:.22rem; flex-shrink:0; }
+    .seg button { height:1.7rem; padding:0 .45rem; border-radius:.4rem; border:1px solid var(--border-subtle); background:#fff; font-size:.7rem; font-weight:600; color:var(--text-muted); }
+    .seg button.on-Passed { color:var(--success); background:var(--success-bg); border-color:color-mix(in srgb, var(--success) 22%, var(--border-subtle)); }
+    .seg button.on-Failed { color:var(--danger); background:var(--danger-bg); border-color:color-mix(in srgb, var(--danger) 22%, var(--border-subtle)); }
+    .seg button.on-Blocked { color:var(--warning); background:var(--warning-bg); border-color:color-mix(in srgb, var(--warning) 25%, var(--border-subtle)); }
+    .seg button.on-Skipped { color:var(--text-muted); background:var(--surface-2); }
+    .step.failed { box-shadow: inset 3px 0 0 var(--danger); }
+    .step.blocked { box-shadow: inset 3px 0 0 var(--warning); }
+    .step.passed { box-shadow: inset 3px 0 0 var(--success); }
+    .step-fields { display:grid; gap:.38rem; margin-top:.55rem; }
+    .field-row { display:grid; grid-template-columns: 4.8rem 1fr; gap:.4rem; align-items:center; }
+    .field-row span { font-size:.7rem; font-weight:600; color:var(--text-muted); letter-spacing:.04em; text-transform:uppercase; }
+    .field-row input { width:100%; height:1.9rem; border:1px solid var(--border-subtle); border-radius:.4rem; padding:0 .5rem; background:#fff; font-size:.82rem; }
+    .attach-row { display:flex; gap:.35rem; align-items:center; flex-wrap:wrap; }
+    .file-chip { display:inline-flex; align-items:center; gap:.3rem; border:1px solid var(--border-subtle); background:var(--info-bg); color:var(--info); border-radius:999px; padding:.12rem .5rem; font-size:.72rem; font-weight:600; }
+    .file-chip button { border:0; background:transparent; color:inherit; padding:0; font-size:.8rem; }
+    .case-note { padding:0 1rem 1rem; }
+    .readonly { display: flex; align-items: center; gap: .4rem; color: var(--text-muted); font-size: .78rem; background: var(--surface-2); border-radius: .45rem; padding: .4rem .55rem; margin-bottom: .85rem; }
+    .diff-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .65rem; margin-bottom: .85rem; }
+    .diff-card { padding: .75rem; }
+    .diff-card h3 { margin: 0 0 .45rem; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); }
+    .diff-item { padding: .4rem 0; border-top: 1px solid var(--border-subtle); font-size: .88rem; }
+    .add { color: var(--success); }
+    .del { color: var(--danger); }
+    .chg { color: var(--info); }
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+    .compare pre { margin: 0; white-space: pre-wrap; font-family: var(--mono); font-size: .75rem; line-height: 1.45; background: var(--surface-2); padding: .7rem; border-radius: .5rem; }
+    .run-layout { display: grid; grid-template-columns: 22rem 1fr; gap: .75rem; min-height: 32rem; }
+    .case-list button.row { width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--border-subtle); background: #fff; padding: .7rem .8rem; display: block; }
+    .case-list button.row.is-on { background: var(--surface-2); }
+    .progress { height: .35rem; background: var(--surface-2); border-radius: 99px; overflow: hidden; }
+    .progress > span { display: block; height: 100%; background: var(--running); }
+    .actions { display: flex; flex-wrap: wrap; gap: .35rem; margin: .55rem 0; }
+    .reason { width: 100%; min-height: 4.2rem; border: 1px solid var(--border-subtle); border-radius: .5rem; padding: .55rem; background: #fff; resize: vertical; }
+    .timeline { position: relative; margin-left: .5rem; }
+    .tl { display: grid; grid-template-columns: 9.5rem 1fr; gap: .7rem; padding: 0 0 1.1rem 1rem; border-left: 1px solid var(--border-strong); }
+    .tl::before { content: ""; width: .55rem; height: .55rem; border-radius: 50%; background: #fff; border: 2px solid var(--border-strong); position: relative; left: calc(-1rem - .32rem); top: .25rem; }
+    .tl.git::before { border-color: var(--info); }
+    .tl.run::before { border-color: var(--success); }
+    .tl.fail::before { border-color: var(--danger); }
+    .foot { position: sticky; bottom: 0; display: flex; justify-content: space-between; gap: .7rem; align-items: center; padding: .7rem 1.1rem; background: #fff; border-top: 1px solid var(--border-subtle); }
+    .hidden { display: none !important; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+    @media (max-width: 1100px) { .stats, .diff-grid, .run-layout, .compare { grid-template-columns: 1fr; } .shell { grid-template-columns: 1fr; } .sidebar { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none"><path d="M5 7.5h14M5 12h10M5 16.5h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <div>
+          <div class="brand__title">Test Desk</div>
+          <div class="brand__sub">Test execution console</div>
+        </div>
+      </div>
+      <nav class="nav" aria-label="Primary">
+        <a class="is-active" href="#" data-screen="catalog">
+          <svg viewBox="0 0 16 16" fill="none"><path d="M2.5 3.5h11M2.5 8h11M2.5 12.5h7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Catalog
+        </a>
+        <a href="#" data-screen="run">
+          <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.25" stroke="currentColor" stroke-width="1.5"/><path d="M8 5.25V8l2 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Executions
+        </a>
+        <a href="#" data-screen="diff">
+          <svg viewBox="0 0 16 16" fill="none"><path d="M3 4.5h10v7H3z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+          Sources
+        </a>
+      </nav>
+    </aside>
+    <div class="main">
+      <div class="notice" role="note">
+        <div><span class="notice__dot"></span><strong>Concept prototype</strong> — Git YAML is the definition. Test Desk records execution only. No in-app editor.</div>
+        <span class="mono">checkout-web @ a13f9c2</span>
+      </div>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" aria-selected="true" data-screen="catalog">1. Catalog</button>
+        <button class="tab" role="tab" aria-selected="false" data-screen="diff">2. Revision diff</button>
+        <button class="tab" role="tab" aria-selected="false" data-screen="run">3. Record run</button>
+        <button class="tab" role="tab" aria-selected="false" data-screen="timeline">4. Case timeline</button>
+      </div>
+
+      <section id="screen-catalog" class="page">
+        <div class="crumbs"><span>Catalog</span><span>Checkout web</span></div>
+        <div class="page-head">
+          <div>
+            <h1>Test catalog</h1>
+            <p class="sub">Read-only projection of <strong>Checkout web</strong> at <span class="mono">a13f9c2</span> on <span class="mono">main</span>. Manual and automated suites share this view.</p>
+          </div>
+          <div style="display:flex;gap:.45rem">
+            <button class="btn" type="button">Sync source</button>
+            <button class="btn btn--primary" type="button" data-screen="run">Run 4 selected</button>
+          </div>
+        </div>
+        <div class="meta">
+          <span>Last synced 12 min ago</span>
+          <span class="mono">a13f9c2</span>
+          <span class="badge passed"><i></i>Synced</span>
+        </div>
+        <div class="stats">
+          <div class="stat"><span>Manual cases</span><b>12</b></div>
+          <div class="stat"><span>Never run on this rev</span><b>3</b></div>
+          <div class="stat"><span>Changed since last run</span><b>1</b></div>
+          <div class="stat"><span>Deprecated in Git</span><b>1</b></div>
+        </div>
+        <div class="toolbar">
+          <input class="search" value="" placeholder="Search cases, keys, tags" />
+          <button class="chip is-on" type="button">Mode: Manual</button>
+          <button class="chip" type="button">Type: UI</button>
+          <button class="chip" type="button">Active only</button>
+          <button class="chip" type="button">Never run on a13f9c2</button>
+        </div>
+        <div class="panel">
+          <div class="group-h">
+            <div>
+              <h2>Checkout (manual)</h2>
+              <div class="hint"><span class="badge manual"><i></i>Manual</span> <span class="badge"><i></i>UI</span> <span class="mono">suites/checkout-manual.yaml</span></div>
+            </div>
+            <span class="lock">Definition from Git · not editable</span>
+          </div>
+          <table>
+            <thead>
+              <tr><th></th><th>Case</th><th>Lifecycle</th><th>Last on this rev</th><th>Last release</th></tr>
+            </thead>
+            <tbody>
+              <tr class="failed-row" data-open="guest">
+                <td><input type="checkbox" checked /></td>
+                <td>
+                  <div class="name">Guest pays with card</div>
+                  <div class="hint mono">checkout-guest-card · P0 · checkout, payment</div>
+                </td>
+                <td><span class="badge passed"><i></i>Active</span> <span class="badge changed"><i></i>Steps changed</span></td>
+                <td><span class="badge failed"><i></i>Failed</span></td>
+                <td class="mono">1.14.2 / qa</td>
+              </tr>
+              <tr data-open="saved">
+                <td><input type="checkbox" checked /></td>
+                <td>
+                  <div class="name">Logged-in pay with saved card</div>
+                  <div class="hint mono">checkout-saved-card · P1</div>
+                </td>
+                <td><span class="badge passed"><i></i>Active</span></td>
+                <td><span class="badge passed"><i></i>Passed</span></td>
+                <td class="mono">1.14.2 / qa</td>
+              </tr>
+              <tr data-open="paypal">
+                <td><input type="checkbox" /></td>
+                <td>
+                  <div class="name">PayPal guest checkout</div>
+                  <div class="hint mono">checkout-paypal · P2</div>
+                </td>
+                <td><span class="badge"><i></i>Deprecated</span></td>
+                <td><span class="badge"><i></i>Excluded by default</span></td>
+                <td class="hint">Removed from default Run all</td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" checked /></td>
+                <td>
+                  <div class="name">3-D Secure challenge</div>
+                  <div class="hint mono">checkout-3ds · P0</div>
+                </td>
+                <td><span class="badge passed"><i></i>Active</span></td>
+                <td><span class="badge"><i></i>Never run on a13f9c2</span></td>
+                <td class="hint">Passed on 9c21ab0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="screen-diff" class="page hidden">
+        <div class="crumbs"><span>Sources</span><span>Checkout web</span><span>Definition diff</span></div>
+        <div class="page-head">
+          <div>
+            <h1>Definition changes</h1>
+            <p class="sub">Git owns this lifecycle. Test Desk only explains what the last sync changed. Comparing <span class="mono">9c21ab0</span> (release 1.14.0 pin) → <span class="mono">a13f9c2</span>.</p>
+          </div>
+        </div>
+        <div class="diff-grid">
+          <div class="panel diff-card"><h3 class="add">Added</h3><div class="diff-item">checkout-3ds · 3-D Secure challenge</div></div>
+          <div class="panel diff-card"><h3 class="chg">Changed</h3><div class="diff-item">checkout-guest-card · step 3 expected text</div></div>
+          <div class="panel diff-card"><h3 class="del">Deprecated / removed</h3><div class="diff-item">checkout-paypal · status: deprecated</div></div>
+        </div>
+        <div class="panel" style="padding:1rem">
+          <div class="name" style="margin-bottom:.55rem">checkout-guest-card · step 3</div>
+          <div class="compare">
+            <div>
+              <div class="hint" style="margin-bottom:.35rem">9c21ab0 expected</div>
+              <pre>Order confirmation shows total $42.00</pre>
+            </div>
+            <div>
+              <div class="hint" style="margin-bottom:.35rem">a13f9c2 expected</div>
+              <pre>Order confirmation shows total $42.00 and last-4 4242</pre>
+            </div>
+          </div>
+          <p class="hint" style="margin:.7rem 0 0">Previous Passed result still exists, but it does not cover the current procedure. Catalog marks this case “Steps changed”.</p>
+        </div>
+      </section>
+
+      <section id="screen-run" class="page hidden">
+        <div class="crumbs"><span>Executions</span><span>AR-2108</span><span>Checkout (manual)</span></div>
+        <div class="page-head">
+          <div>
+            <h1>Record manual run</h1>
+            <p class="sub">Pinned procedure from Git. Recording writes Result Entries, not YAML. Automated UI suites in this Application Run dispatch separately.</p>
+          </div>
+          <button class="btn btn--danger btn-sm" type="button">Cancel run</button>
+        </div>
+        <div class="meta">
+          <span class="badge running"><i></i>Running</span>
+          <span class="badge"><i></i>Outcome Unknown</span>
+          <span class="badge"><i></i>Ingestion Partial</span>
+          <span>qa</span>
+          <span class="mono">release 1.14.2</span>
+          <span class="mono">a13f9c2</span>
+          <span>UI · Manual · no connector</span>
+        </div>
+        <div class="run-layout">
+          <div class="panel case-list">
+            <div class="group-h">
+              <div>
+                <h2>Selected cases</h2>
+                <div class="hint"><span id="progress-label">3 / 4 terminal</span></div>
+              </div>
+            </div>
+            <div class="progress"><span id="progress-bar" style="width:75%"></span></div>
+            <div id="case-rows"></div>
+          </div>
+          <div class="panel" style="display:flex;flex-direction:column">
+            <div class="group-h">
+              <div>
+                <h2 id="case-title">3-D Secure challenge</h2>
+                <div class="hint mono" id="case-meta">checkout-3ds · snapshot of a13f9c2 · steps locked</div>
+              </div>
+              <span class="badge" id="case-badge"><i></i>Not run</span>
+            </div>
+            <div style="padding:.9rem 1rem 0">
+              <div class="readonly">Each step has its own status, actual, comment, and Evidence. Git still owns the action/expected text.</div>
+              <div id="step-list"></div>
+            </div>
+            <div class="case-note">
+              <div class="field-row">
+                <span>Case note</span>
+                <input id="case-note" placeholder="Optional summary that is not step-specific" />
+              </div>
+            </div>
+            <div class="foot">
+              <div class="hint">Evidence stays on the step Result Entry. Pass does not require a note or screenshot. Blocked does.</div>
+              <button class="btn btn--primary" id="complete-btn" type="button" disabled>Complete manual run</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="screen-timeline" class="page hidden">
+        <div class="crumbs"><span>Catalog</span><span>checkout-guest-card</span><span>Timeline</span></div>
+        <div class="page-head">
+          <div>
+            <h1>Guest pays with card</h1>
+            <p class="sub">Stable identity <span class="mono">checkout-guest-card</span>. Git events and executions are interleaved so a green last-run chip cannot hide a step change.</p>
+          </div>
+        </div>
+        <div class="panel" style="padding:1.1rem 1.1rem .4rem">
+          <div class="timeline">
+            <div class="tl git">
+              <div class="hint mono">a13f9c2 · 2h ago</div>
+              <div>
+                <div class="name">Definition changed in Git</div>
+                <div class="hint">Step 3 expected result now requires last-4 4242. Status remains Active.</div>
+              </div>
+            </div>
+            <div class="tl fail">
+              <div class="hint mono">AR-2108 · 48 min ago</div>
+              <div>
+                <div class="name">Failed on qa · release 1.14.2</div>
+                <div class="hint">Recorded by m.chen · step 3 actual: confirmation omitted last-4. Evidence: confirm.png</div>
+                <span class="badge failed"><i></i>Failed</span>
+              </div>
+            </div>
+            <div class="tl run">
+              <div class="hint mono">AR-2041 · 9c21ab0</div>
+              <div>
+                <div class="name">Passed on qa · release 1.14.0</div>
+                <div class="hint">Covers the previous procedure only. Not coverage for a13f9c2.</div>
+                <span class="badge passed"><i></i>Passed</span>
+              </div>
+            </div>
+            <div class="tl git">
+              <div class="hint mono">9c21ab0 · last week</div>
+              <div>
+                <div class="name">Case added in Git</div>
+                <div class="hint">Lifecycle: Active. Suite Checkout (manual) · UI.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div class="drawer-scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer" aria-label="Case detail">
+    <header>
+      <div class="hint">Catalog / Checkout (manual)</div>
+      <h3>Guest pays with card</h3>
+      <div class="hint mono">checkout-guest-card</div>
+    </header>
+    <div class="body">
+      <div class="readonly">Read-only · Test Case Revision at a13f9c2. Edit this in Git.</div>
+      <dl class="kvs">
+        <dt>Test Type</dt><dd>UI</dd>
+        <dt>Execution Mode</dt><dd>Manual</dd>
+        <dt>Lifecycle</dt><dd>Active</dd>
+        <dt>Priority</dt><dd>P0</dd>
+        <dt>Last on this rev</dt><dd>Failed · AR-2108 · qa</dd>
+      </dl>
+      <div class="step"><b>Preconditions</b><p>QA checkout, Visa 4242, empty cart.</p></div>
+      <div class="step"><b>Step 1</b><p>Open /checkout as guest and add the blue mug.</p><p class="expected">Expected: Cart count is 1.</p></div>
+      <div class="step"><b>Step 2</b><p>Pay with Visa 4242.</p><p class="expected">Expected: Payment form accepts the card.</p></div>
+      <div class="step"><b>Step 3</b><p>Submit the order.</p><p class="expected">Expected: Confirmation shows total $42.00 and last-4 4242.</p></div>
+    </div>
+    <div class="foot">
+      <button class="btn" type="button" id="close-drawer">Close</button>
+      <button class="btn btn--primary" type="button" data-screen="run">Run in qa</button>
+    </div>
+  </aside>
+
+  <script>
+    const screens = ["catalog", "diff", "run", "timeline"];
+    function show(name) {
+      screens.forEach((id) => {
+        document.getElementById("screen-" + id).classList.toggle("hidden", id !== name);
+      });
+      document.querySelectorAll(".tab").forEach((tab) => {
+        tab.setAttribute("aria-selected", tab.dataset.screen === name ? "true" : "false");
+      });
+      document.querySelectorAll(".nav a").forEach((a) => {
+        a.classList.toggle("is-active", a.dataset.screen === name || (name === "timeline" && a.dataset.screen === "catalog") || (name === "diff" && a.dataset.screen === "diff"));
+      });
+      closeDrawer();
+    }
+    document.querySelectorAll("[data-screen]").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        e.preventDefault();
+        show(el.dataset.screen);
+      });
+    });
+    const drawer = document.getElementById("drawer");
+    const scrim = document.getElementById("scrim");
+    function openDrawer() { drawer.classList.add("open"); scrim.classList.add("open"); }
+    function closeDrawer() { drawer.classList.remove("open"); scrim.classList.remove("open"); }
+    document.querySelectorAll("tr[data-open]").forEach((row) => row.addEventListener("click", openDrawer));
+    document.getElementById("close-drawer").addEventListener("click", closeDrawer);
+    scrim.addEventListener("click", closeDrawer);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeDrawer(); });
+
+    const STATUSES = ["Passed", "Failed", "Blocked", "Skipped"];
+    const tone = { Passed: "passed", Failed: "failed", Blocked: "blocked", Skipped: "" };
+    const cases = {
+      guest: {
+        title: "Guest pays with card",
+        key: "checkout-guest-card",
+        note: "Reproduced twice on qa.",
+        steps: [
+          { action: "Open /checkout as guest and add the blue mug.", expected: "Cart count is 1.", status: "Passed", actual: "", comment: "", files: [] },
+          { action: "Pay with Visa 4242.", expected: "Payment form accepts the card.", status: "Passed", actual: "", comment: "3DS did not trigger for this bin.", files: [] },
+          { action: "Submit the order.", expected: "Confirmation shows total $42.00 and last-4 4242.", status: "Failed", actual: "Confirmation showed $42.00 only.", comment: "Last-4 missing after a13f9c2 copy change.", files: ["confirm.png"] }
+        ]
+      },
+      saved: {
+        title: "Logged-in pay with saved card",
+        key: "checkout-saved-card",
+        note: "",
+        steps: [
+          { action: "Sign in as qa-shopper.", expected: "Account menu shows qa-shopper.", status: "Passed", actual: "", comment: "", files: [] },
+          { action: "Pay with the saved Visa.", expected: "Order confirmation loads.", status: "Passed", actual: "", comment: "", files: [] }
+        ]
+      },
+      three: {
+        title: "3-D Secure challenge",
+        key: "checkout-3ds",
+        note: "",
+        steps: [
+          { action: "Add a Visa to the cart and choose Pay.", expected: "3-D Secure challenge frame opens.", status: "", actual: "", comment: "", files: [] },
+          { action: "Complete the bank challenge with the QA OTP.", expected: "Checkout returns to order confirmation.", status: "", actual: "", comment: "", files: [] },
+          { action: "Confirm last-4 and total.", expected: "Confirmation shows $42.00 and 4242.", status: "", actual: "", comment: "", files: [] }
+        ]
+      },
+      wallet: {
+        title: "Apple Pay on desktop",
+        key: "checkout-apple-pay",
+        note: "",
+        steps: [
+          { action: "Choose Apple Pay on Chrome desktop.", expected: "Wallet sheet opens.", status: "Blocked", actual: "", comment: "Wallet sheet never opened. Merchant cert expired.", files: ["console.txt"] }
+        ]
+      }
+    };
+    let currentId = "guest";
+
+    function caseStatus(item) {
+      const statuses = item.steps.map((s) => s.status);
+      if (statuses.some((s) => !s)) return "Not run";
+      if (statuses.some((s) => s === "Failed")) return "Failed";
+      if (statuses.some((s) => s === "Blocked")) return "Blocked";
+      if (statuses.every((s) => s === "Skipped")) return "Skipped";
+      if (statuses.every((s) => s === "Passed" || s === "Skipped")) return "Passed";
+      return "Not run";
+    }
+
+    function badgeHtml(status) {
+      return `<span class="badge ${tone[status] || ""}"><i></i>${status}</span>`;
+    }
+
+    function renderCases() {
+      const root = document.getElementById("case-rows");
+      root.innerHTML = Object.entries(cases).map(([id, item]) => {
+        const status = caseStatus(item);
+        return `<button class="row ${id === currentId ? "is-on" : ""}" data-case="${id}" type="button">
+          <div class="name">${item.title}</div>
+          <div class="hint">${item.key}</div>
+          ${badgeHtml(status)}
+        </button>`;
+      }).join("");
+      root.querySelectorAll("[data-case]").forEach((btn) => {
+        btn.addEventListener("click", () => { currentId = btn.dataset.case; renderAll(); });
+      });
+      const terminal = Object.values(cases).filter((item) => caseStatus(item) !== "Not run").length;
+      const total = Object.keys(cases).length;
+      document.getElementById("progress-label").textContent = `${terminal} / ${total} terminal`;
+      document.getElementById("progress-bar").style.width = `${(terminal / total) * 100}%`;
+      document.getElementById("complete-btn").disabled = terminal !== total;
+    }
+
+    function renderCase() {
+      const item = cases[currentId];
+      const status = caseStatus(item);
+      document.getElementById("case-title").textContent = item.title;
+      document.getElementById("case-meta").textContent = `${item.key} · snapshot of a13f9c2 · steps locked`;
+      const badge = document.getElementById("case-badge");
+      badge.className = "badge " + (tone[status] || "");
+      badge.innerHTML = `<i></i>${status}`;
+      document.getElementById("case-note").value = item.note;
+      document.getElementById("step-list").innerHTML = item.steps.map((step, index) => `
+        <div class="step ${tone[step.status] || ""}">
+          <div class="step-head">
+            <div>
+              <b>Step ${index + 1}</b>
+              <p>${step.action}</p>
+              <p class="expected">Expected: ${step.expected}</p>
+            </div>
+            <div class="seg" role="group" aria-label="Step ${index + 1} status">
+              ${STATUSES.map((s) => `<button type="button" class="${step.status === s ? "on-" + s : ""}" data-step="${index}" data-status="${s}">${s === "Passed" ? "Pass" : s === "Failed" ? "Fail" : s === "Blocked" ? "Block" : "Skip"}</button>`).join("")}
+            </div>
+          </div>
+          <div class="step-fields">
+            <label class="field-row"><span>Actual</span><input data-field="actual" data-step="${index}" value="${step.actual.replaceAll('"', '&quot;')}" placeholder="What happened" /></label>
+            <label class="field-row"><span>Comment</span><input data-field="comment" data-step="${index}" value="${step.comment.replaceAll('"', '&quot;')}" placeholder="${step.status === "Blocked" ? "Required for Blocked" : "Optional note"}" /></label>
+            <div class="field-row"><span>Evidence</span>
+              <div class="attach-row">
+                ${step.files.map((file, fi) => `<span class="file-chip">${file}<button type="button" data-remove="${index}:${fi}" aria-label="Remove ${file}">×</button></span>`).join("")}
+                <button class="btn btn-sm" type="button" data-attach="${index}">Attach</button>
+                <input class="hidden" type="file" data-file="${index}" />
+              </div>
+            </div>
+          </div>
+        </div>`).join("");
+
+      document.querySelectorAll("#step-list [data-status]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const step = item.steps[Number(btn.dataset.step)];
+          if (btn.dataset.status === "Blocked" && !step.comment.trim()) {
+            step.status = "Blocked";
+            renderAll();
+            document.querySelector(`#step-list [data-field="comment"][data-step="${btn.dataset.step}"]`).focus();
+            return;
+          }
+          step.status = btn.dataset.status;
+          renderAll();
+        });
+      });
+      document.querySelectorAll("#step-list [data-field]").forEach((input) => {
+        input.addEventListener("input", () => {
+          item.steps[Number(input.dataset.step)][input.dataset.field] = input.value;
+        });
+      });
+      document.querySelectorAll("#step-list [data-attach]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          document.querySelector(`#step-list [data-file="${btn.dataset.attach}"]`).click();
+        });
+      });
+      document.querySelectorAll("#step-list [data-file]").forEach((input) => {
+        input.addEventListener("change", () => {
+          const file = input.files && input.files[0];
+          if (!file) return;
+          item.steps[Number(input.dataset.file)].files.push(file.name);
+          renderAll();
+        });
+      });
+      document.querySelectorAll("#step-list [data-remove]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const [si, fi] = btn.dataset.remove.split(":").map(Number);
+          item.steps[si].files.splice(fi, 1);
+          renderAll();
+        });
+      });
+    }
+
+    document.getElementById("case-note").addEventListener("input", (e) => {
+      cases[currentId].note = e.target.value;
+    });
+
+    function renderAll() { renderCases(); renderCase(); }
+    renderAll();
+  </script>
+</body>
+</html>

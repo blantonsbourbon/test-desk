@@ -7,8 +7,8 @@ results independently of the infrastructure that executes tests.
 ## Test definitions
 
 **Application**:
-The product or deployable service whose automated test capabilities and
-results are grouped together.
+The product or deployable service whose test capabilities and results are
+grouped together.
 _Avoid_: Jenkins job, repository, Test Suite
 
 **Test Source**:
@@ -30,36 +30,48 @@ _Avoid_: Latest code, mutable branch state
 
 **Test Suite**:
 A named group of related executable Test Cases that share one Source Test Type
-(`UI` or `Integration`) and execution compatibility. A Suite organizes and
-selects cases; it is not an Application Run.
+(`UI` or `Integration`), one Execution Mode, and execution compatibility. A
+Suite organizes and selects cases; it is not an Application Run.
 _Avoid_: Jenkins job, Application Run, generic pipeline
 
 **Test Case**:
 One independently selectable, semantically meaningful test declared by the
 Test Manifest. A Test Case has a stable identity across Test Source Revisions.
-_Avoid_: Display row, run-local result
+_Avoid_: Display row, run-local result, Functional Case
 
 **Test Case Revision**:
 The immutable parsed definition of a Test Case at one Test Source Revision,
-including its source location, framework binding, parameters, and execution
-reference.
+including its source location, framework binding, parameters, steps, and
+execution reference.
 _Avoid_: Mutable current case, Test Run
+
+**Definition Lifecycle**:
+The Git-owned presence and declared status of a Test Case across Test Source
+Revisions, such as draft, active, deprecated, or absent from the current
+revision.
+_Avoid_: Execution Lifecycle, last result, in-app approval
 
 **Test Type**:
 The result family of a Test Suite, Regression Policy, or Test Run: `UI`,
-`Integration`, or `Regression`. Test Type does not identify a framework or
-execution system.
-_Avoid_: BDD, runner type, connector, Jenkins job
+`Integration`, or `Regression`. Test Type does not identify a framework,
+Execution Mode, or execution system.
+_Avoid_: BDD, runner type, connector, Jenkins job, Manual, Functional
+
+**Execution Mode**:
+The way a Source Test Run obtains results: `Automated` or `Manual`.
+Independent of Test Type. A Test Suite has exactly one Execution Mode at a
+Test Source Revision.
+_Avoid_: Manual Test Type, Functional, connector choice, framework=manual
 
 **Definition Style**:
-An optional way a test is authored or presented, such as BDD. It does not
-change Test Type, dispatch, or result semantics.
+An optional way a test is authored or presented, such as BDD or step lists.
+It does not change Test Type, Execution Mode, dispatch, or result semantics.
 _Avoid_: Test Type, framework
 
 **Test Framework**:
 The library or report protocol used by a Test Suite, such as Playwright, Rest
 Assured, Cucumber, or JUnit.
-_Avoid_: Test Type, connector, execution environment
+_Avoid_: Test Type, Execution Mode, connector, execution environment
 
 **Application Release**:
 An immutable built version of an Application, identified by its release/build
@@ -90,7 +102,7 @@ _Avoid_: Current manifest, mutable run definition
 One revision-pinned request to evaluate an Application Release in one
 Environment. It owns the child Test Runs created by `Run all` or by an
 equivalent API request, and retains Execution Provenance and a Run Snapshot.
-_Avoid_: RunSet, Jenkins pipeline, synthetic test result
+_Avoid_: RunSet, Jenkins pipeline, synthetic test result, Test Plan
 
 **Application Run State**:
 The coordination progress of an Application Run: `Created`, `Dispatching`,
@@ -105,8 +117,14 @@ _Avoid_: Application Run, Jenkins build
 
 **Source Test Run**:
 A UI or Integration Test Run whose normalized results can be used as candidate
-input to a Regression Test Run.
+input to a Regression Test Run. It may be Automated or Manual.
 _Avoid_: Baseline, comparison report
+
+**Manual Test Run**:
+A Source Test Run whose Execution Mode is `Manual`. Result Entries are
+recorded by a tester against pinned Test Case Revisions. It has no External
+Execution and no Execution Profile.
+_Avoid_: Manual connector, Functional Test Type, Test Plan, Catalog editor
 
 **Regression Test Run**:
 A derived Test Run that compares completed candidate Source Test Runs with a
@@ -120,19 +138,19 @@ baseline policy, comparison scope, and compatibility requirements.
 _Avoid_: Jenkins parameter, mutable latest-successful pointer
 
 **Execution Profile**:
-A server-managed binding between a Test Suite and the configuration required
-to execute it through one Execution Connector.
-_Avoid_: User preset, Jenkins job exposed to the UI
+A server-managed binding between an Automated Test Suite and the configuration
+required to execute it through one Execution Connector.
+_Avoid_: User preset, Jenkins job exposed to the UI, Manual Test Run config
 
 **Execution Connector**:
 The integration that dispatches and observes an External Execution, such as a
 Jenkins connector.
-_Avoid_: Test Type, Test Source, trigger
+_Avoid_: Test Type, Execution Mode, Test Source, trigger
 
 **External Execution**:
-The queue item and build created in an external execution system for a Source
-Test Run.
-_Avoid_: Test Run, Catalog Entry
+The queue item and build created in an external execution system for an
+Automated Source Test Run.
+_Avoid_: Test Run, Catalog Entry, Manual Test Run
 
 **Environment**:
 The business-level deployment target against which an Application Run is
@@ -143,16 +161,22 @@ _Avoid_: Build agent, runner host
 
 **Execution Lifecycle**:
 The progress of a Test Run: `Queued`, `Running`, `Collecting`, `Completed`, or
-`Cancelled`.
+`Cancelled`. Manual Test Runs do not enter `Collecting`.
 _Avoid_: Test Outcome, Jenkins native status
 
 **Test Outcome**:
 The assertion result of valid normalized output: `Passed`, `Failed`, or
 `Unknown`.
-_Avoid_: Execution Lifecycle, Jenkins build result
+_Avoid_: Execution Lifecycle, Jenkins build result, Manual Result Status
+
+**Manual Result Status**:
+The tester-recorded status of one selected case or step: `Passed`, `Failed`,
+`Blocked`, or `Skipped`. It is not Test Outcome.
+_Avoid_: Test Outcome, Execution Lifecycle, Jenkins status
 
 **Ingestion State**:
-The trust state of collected output: `Pending`, `Valid`, `Partial`, or `Error`.
+The trust state of collected or recorded output: `Pending`, `Valid`,
+`Partial`, or `Error`.
 _Avoid_: Test Outcome, artifact upload progress
 
 **Result Entry**:
